@@ -1,3 +1,28 @@
-sofifa_data/
+# Python scraper data 
 __pycache__/
 sofifa_all_players.csv
+
+# Node / pnpm 
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# Python backend (when added)
+.venv/
+apps/server/.venv/
+
+# Logs
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

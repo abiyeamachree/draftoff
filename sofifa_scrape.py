@@ -1,14 +1,3 @@
-"""Scrape sofifa.com player data for main-title editions FIFA 07 through FC 26.
-
-Uses nodriver to pass Cloudflare. List-view scraping with custom columns (data-col),
-per-edition team->league maps from the teams listing, resumable pagination.
-
-Usage:
-    python sofifa_scrape.py --probe
-    python sofifa_scrape.py
-    python sofifa_scrape.py --only 260037
-    python sofifa_scrape.py --merge-only
-"""
 from __future__ import annotations
 
 import argparse
@@ -271,14 +260,9 @@ def cell_text(td) -> str:
 
 
 def pick_player_name(player_link) -> tuple[str, str]:
-    """Return (regular_name, legal_name) from list-view player link.
-
-    SoFIFA shows a short link label and a tooltip with the DB/legal name.
-    Examples:
-      link "Cristiano Ronaldo" + tooltip "C. Ronaldo dos Santos Aveiro"
-      link "L. Messi" + tooltip "Lionel Messi"
-    When the link is abbreviated (e.g. "L. Messi"), prefer the tooltip.
-  """
+    """
+    Return (regular_name, legal_name) from list-view player link.
+    """
     display = player_link.get_text(" ", strip=True)
     tooltip = (player_link.get("data-tippy-content") or "").strip()
     if not display and tooltip:
