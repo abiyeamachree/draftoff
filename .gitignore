@@ -1,6 +1,7 @@
 # Python scraper data 
 __pycache__/
 sofifa_all_players.csv
+sofifa_data/
 
 # Node / pnpm 
 node_modules/
