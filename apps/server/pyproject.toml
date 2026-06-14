@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "draftoff-server"
+version = "0.0.0"
+description = "DraftOff realtime backend (FastAPI + python-socketio)"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110",
+  "python-socketio>=5.11",
+  "uvicorn[standard]>=0.29",
+]
+
+[project.scripts]
+draftoff-server = "draftoff.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 import type { DraftState } from "@draftoff/shared";
+import { getUserId } from "@/lib/identity";
 import { useSocket } from "./useSocket";
 
 /**
- * Subscribe to authoritative draft state + per-second timer ticks.
+ * Subscribe to authoritative draft state + per-second timer ticks. Syncs on
+ * mount so a direct link / refresh re-attaches to the running draft.
  */
-export function useDraft(_code: string): {
+export function useDraft(code: string): {
   draft: DraftState | null;
   timeRemaining: number | null;
 } {
-  const { socket } = useSocket();
+  const { socket, connected } = useSocket();
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
@@ -25,11 +27,16 @@ export function useDraft(_code: string): {
 
     socket.on("draft:state", onState);
     socket.on("draft:tick", onTick);
+
+    socket.emit("draft:sync", { code, userId: getUserId(code) }, (res) => {
+      if (res.ok) onState(res.data);
+    });
+
     return () => {
       socket.off("draft:state", onState);
       socket.off("draft:tick", onTick);
     };
-  }, [socket]);
+  }, [socket, connected, code]);
 
   return { draft, timeRemaining };
 }

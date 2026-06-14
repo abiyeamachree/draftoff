@@ -49,3 +49,14 @@ export interface LobbyState {
   settings: LobbySettings;
   players: LobbyPlayer[];
 }
+
+/** Compact lobby info for the public lobby browser on the home screen. */
+export interface LobbySummary {
+  code: string;
+  hostName: string;
+  playerCount: number;
+  maxPlayers: number;
+  status: LobbyStatus;
+  teamSize: TeamSize;
+  tournamentType: TournamentType;
+}

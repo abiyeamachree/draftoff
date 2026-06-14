@@ -13,6 +13,7 @@ const config: Config = {
           DEFAULT: "#0b6e4f",
           dark: "#064e3b",
         },
+        gold: "#f5c518",
       },
     },
   },

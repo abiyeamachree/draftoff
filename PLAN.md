@@ -196,18 +196,25 @@ All pages subscribe to authoritative state via the typed socket client; no game 
 
 ## 11. Local dev (once dependencies are installed)
 
+Two processes: the Python realtime server (port 4000) and the Next.js web app (port 3000).
+
 ```bash
+# 1. Frontend deps
 pnpm install
-# start Postgres (e.g. docker run --name draftoff-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres)
-cp .env.example .env            # fill DATABASE_URL etc.
 
-# Frontend
-pnpm --filter @draftoff/web dev
-
-# Backend (once apps/server Python scaffold exists)
-cd apps/server && python -m venv .venv && .venv/Scripts/activate  # Windows
+# 2. Backend (Python) — from apps/server
+cd apps/server
+py -m venv .venv
+.venv\Scripts\activate          # Windows (use: source .venv/bin/activate elsewhere)
 pip install -e .
-python -m draftoff  # or uvicorn entrypoint — TBD
+python -m draftoff              # serves Socket.IO + HTTP on http://localhost:4000
+
+# 3. Frontend (separate terminal, from repo root)
+pnpm --filter @draftoff/web dev # http://localhost:3000
 ```
 
-> The Node.js backend was removed. Game logic and DB access will live in `apps/server` (Python). The web client still uses `packages/shared` for typed socket events.
+The web client connects to `NEXT_PUBLIC_SERVER_URL` (defaults to `http://localhost:4000`).
+
+> Current state (M1): lobby create/join, a live lobby browser, shareable invite links,
+> host-driven start, and a live draft screen all work against an **in-memory** store.
+> Postgres persistence and the pick/sim/tournament engines come next.

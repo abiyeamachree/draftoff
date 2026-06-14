@@ -11,7 +11,7 @@
  */
 
 import type { DraftState } from "../types/draft.js";
-import type { LobbySettings, LobbyState } from "../types/lobby.js";
+import type { LobbySettings, LobbyState, LobbySummary } from "../types/lobby.js";
 import type { MatchResult } from "../types/match.js";
 import type { PlayerPoolEntry } from "../types/player.js";
 import type { TournamentState } from "../types/tournament.js";
@@ -51,15 +51,34 @@ export interface ResumePayload {
   userId: string;
 }
 
+/** Re-attach an existing/known identity to a lobby or draft after navigation. */
+export interface SyncPayload {
+  code: string;
+  /** Previously issued user id (from create/join), if the client has one. */
+  userId?: string;
+}
+
 /** Events the client sends to the server (with typed ack callbacks). */
 export interface ClientToServerEvents {
   "lobby:create": (
     payload: CreateLobbyPayload,
-    ack: (res: Ack<{ code: string; userId: string }>) => void
+    ack: (res: Ack<{ code: string; userId: string; state: LobbyState }>) => void
   ) => void;
   "lobby:join": (
     payload: JoinLobbyPayload,
-    ack: (res: Ack<{ userId: string }>) => void
+    ack: (res: Ack<{ userId: string; state: LobbyState }>) => void
+  ) => void;
+  /** Browse all joinable lobbies (home screen). */
+  "lobby:list": (ack: (res: Ack<LobbySummary[]>) => void) => void;
+  /** Re-subscribe a socket to a lobby room and fetch current state. */
+  "lobby:sync": (
+    payload: SyncPayload,
+    ack: (res: Ack<LobbyState>) => void
+  ) => void;
+  /** Re-subscribe a socket to a draft room and fetch current state. */
+  "draft:sync": (
+    payload: SyncPayload,
+    ack: (res: Ack<DraftState>) => void
   ) => void;
   "lobby:setReady": (
     payload: { code: string; ready: boolean },
@@ -90,6 +109,8 @@ export interface ClientToServerEvents {
 /** Authoritative broadcasts the server sends to clients. */
 export interface ServerToClientEvents {
   "lobby:state": (state: LobbyState) => void;
+  /** Pushed to every connected client whenever the set of lobbies changes. */
+  "lobby:list": (summaries: LobbySummary[]) => void;
   "draft:state": (state: DraftState) => void;
   /** Lightweight turn change (full state still authoritative via draft:state). */
   "draft:turn": (payload: { activeUserId: string | null; round: number }) => void;
