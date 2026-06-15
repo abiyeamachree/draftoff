@@ -7,21 +7,89 @@ is layered on later (PLAN.md §2.2); none of the realtime hot path touches a DB.
 from __future__ import annotations
 
 import random
-import string
+import re
 import uuid
 
 from .draft import build_draft_state
 
 MAX_PLAYERS_PER_LOBBY = 20
+NAME_MAX_LENGTH = 24
 
-ALLOWED_TEAM_SIZES = {5, 7, 8, 11}
-ALLOWED_TOURNAMENTS = {"knockout", "round_robin"}
+# Display names: letters, numbers and ! . £ $ only. No spaces.
+_NAME_RE = re.compile(r"^[A-Za-z0-9!.£$]+$")
+
+
+def is_valid_name(name: str) -> bool:
+    return len(name) <= NAME_MAX_LENGTH and bool(_NAME_RE.match(name))
+
+ALLOWED_TEAM_SIZES = {5, 8, 11}
+ALLOWED_TOURNAMENTS = {
+    "round_robin",
+    "double_round_robin",
+    "knockout",
+    "groups_knockout",
+    "best_of",
+}
+ALLOWED_DRAFT_TYPES = {"snake", "linear", "pack"}
+ALLOWED_VISIBILITY = {"public", "private"}
+ALLOWED_POOL_LOGIC = {"OR", "AND"}
+POOL_KEYS = ("leagues", "seasons", "nations", "clubs")
+CAP_KEYS = ("maxPerClub", "maxPerNation", "maxPerLeague")
+BOOL_KEYS = (
+    "peakCardsEnabled",
+    "hideRatings",
+    "chatEnabled",
+    "draftBoardEnabled",
+    "fillWithBots",
+)
+
+MIN_TIMER = 5
+MAX_TIMER = 30
+MIN_PLAYERS = 2
+MAX_PLAYERS = 20
+MAX_CAP = 50
+
+
+def _empty_filter() -> dict:
+    return {key: [] for key in POOL_KEYS}
+
+
+def _empty_pool() -> dict:
+    return {"include": _empty_filter(), "exclude": _empty_filter(), "logic": "OR"}
+
+
+def _clean_filter(raw: object) -> dict:
+    out = _empty_filter()
+    if not isinstance(raw, dict):
+        return out
+    for key in POOL_KEYS:
+        values = raw.get(key)
+        if isinstance(values, list):
+            cleaned: list[str] = []
+            for v in values:
+                if isinstance(v, str) and v.strip():
+                    value = v.strip()[:64]
+                    if value not in cleaned:
+                        cleaned.append(value)
+            out[key] = cleaned[:200]
+    return out
+
 
 DEFAULT_SETTINGS: dict = {
-    "teamSize": 5,
-    "draftTimerSeconds": 30,
+    "numPlayers": 4,
+    "teamSize": 11,
     "tournamentType": "knockout",
+    "draftType": "snake",
+    "draftTimerSeconds": 30,
+    "visibility": "public",
     "peakCardsEnabled": True,
+    "maxPerClub": 0,
+    "maxPerNation": 0,
+    "maxPerLeague": 0,
+    "hideRatings": False,
+    "chatEnabled": True,
+    "draftBoardEnabled": True,
+    "fillWithBots": False,
 }
 
 # Unambiguous alphabet for join codes (no O/0/I/1).
@@ -35,23 +103,49 @@ def _new_user_id() -> str:
 def parse_settings(raw: dict | None) -> dict:
     """Coerce a (possibly partial, possibly hostile) settings dict to a valid one."""
     settings = dict(DEFAULT_SETTINGS)
+    settings["pool"] = _empty_pool()
     if not isinstance(raw, dict):
         return settings
+
+    num_players = raw.get("numPlayers")
+    if isinstance(num_players, int) and MIN_PLAYERS <= num_players <= MAX_PLAYERS:
+        settings["numPlayers"] = num_players
 
     team_size = raw.get("teamSize")
     if isinstance(team_size, int) and team_size in ALLOWED_TEAM_SIZES:
         settings["teamSize"] = team_size
 
     timer = raw.get("draftTimerSeconds")
-    if isinstance(timer, int) and 5 <= timer <= 300:
+    if isinstance(timer, int) and MIN_TIMER <= timer <= MAX_TIMER:
         settings["draftTimerSeconds"] = timer
 
     tournament = raw.get("tournamentType")
     if tournament in ALLOWED_TOURNAMENTS:
         settings["tournamentType"] = tournament
 
-    if isinstance(raw.get("peakCardsEnabled"), bool):
-        settings["peakCardsEnabled"] = raw["peakCardsEnabled"]
+    draft_type = raw.get("draftType")
+    if draft_type in ALLOWED_DRAFT_TYPES:
+        settings["draftType"] = draft_type
+
+    visibility = raw.get("visibility")
+    if visibility in ALLOWED_VISIBILITY:
+        settings["visibility"] = visibility
+
+    for key in BOOL_KEYS:
+        if isinstance(raw.get(key), bool):
+            settings[key] = raw[key]
+
+    for key in CAP_KEYS:
+        value = raw.get(key)
+        if isinstance(value, int) and 0 <= value <= MAX_CAP:
+            settings[key] = value
+
+    pool = raw.get("pool")
+    if isinstance(pool, dict):
+        settings["pool"]["include"] = _clean_filter(pool.get("include"))
+        settings["pool"]["exclude"] = _clean_filter(pool.get("exclude"))
+        if pool.get("logic") in ALLOWED_POOL_LOGIC:
+            settings["pool"]["logic"] = pool["logic"]
 
     return settings
 
@@ -129,8 +223,12 @@ class LobbyStore:
         self._lobbies.pop((code or "").upper(), None)
 
     def summaries(self) -> list[dict]:
-        # Newest first; only show lobbies that are still joinable or in progress.
-        return [lobby.to_summary() for lobby in reversed(list(self._lobbies.values()))]
+        # Newest first; only public lobbies appear in the browser.
+        return [
+            lobby.to_summary()
+            for lobby in reversed(list(self._lobbies.values()))
+            if lobby.settings["visibility"] == "public"
+        ]
 
 
 store = LobbyStore()

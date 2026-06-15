@@ -2,22 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { LobbySummary } from "@draftoff/shared";
+import { TOURNAMENT_LABELS } from "@draftoff/shared";
 import { useLobbyList } from "@/hooks/useLobbyList";
 import { useSocket } from "@/hooks/useSocket";
 import { getName, setName, setUserId } from "@/lib/identity";
-
-const TOURNAMENT_LABEL: Record<LobbySummary["tournamentType"], string> = {
-  knockout: "Knockout",
-  round_robin: "Round robin",
-};
+import { sanitiseName } from "@/lib/name";
 
 export function HomeScreen() {
   const router = useRouter();
   const { socket } = useSocket();
   const { lobbies } = useLobbyList();
 
-  const [displayName, setDisplayName] = useState(getName);
+  const [displayName, setDisplayName] = useState(() => sanitiseName(getName()));
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,7 +51,7 @@ export function HomeScreen() {
       <header className="text-center">
         <h1 className="title text-3xl text-gold sm:text-4xl">DRAFTOFF</h1>
         <p className="mt-4 text-xl text-white/80">
-          Draft football legends. Simulate glory.
+          Pick 11 players and simulate a tournament with friends!
         </p>
       </header>
 
@@ -68,9 +64,8 @@ export function HomeScreen() {
             <input
               className="field mt-1"
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              onChange={(e) => setDisplayName(sanitiseName(e.target.value))}
               placeholder="e.g. Gaffer"
-              maxLength={24}
             />
           </label>
 
@@ -127,37 +122,47 @@ export function HomeScreen() {
             </p>
           ) : (
             <ul className="space-y-2">
-              {lobbies.map((l) => (
-                <li
-                  key={l.code}
-                  className="inset flex items-center justify-between px-4 py-3"
-                >
+              {lobbies.map((l) => {
+                const meta = (
                   <div className="min-w-0">
-                    <p className="truncate font-extrabold">
-                      {l.hostName}
-                      <span className="ml-2 font-mono text-gold">{l.code}</span>
-                    </p>
+                    <p className="truncate font-extrabold">{l.hostName}&apos;s draft</p>
                     <p className="text-xs font-medium text-white/50">
                       {l.playerCount}/{l.maxPlayers} · {l.teamSize}-a-side ·{" "}
-                      {TOURNAMENT_LABEL[l.tournamentType]}
+                      {TOURNAMENT_LABELS[l.tournamentType]}
                     </p>
                   </div>
-                  {l.status === "LOBBY" ? (
+                );
+
+                if (l.status !== "LOBBY") {
+                  return (
+                    <li
+                      key={l.code}
+                      className="inset flex items-center justify-between px-4 py-3 opacity-70"
+                    >
+                      {meta}
+                      <span className="pill bg-black/40 text-white/60">
+                        {l.status === "DRAFTING" ? "Drafting" : "In play"}
+                      </span>
+                    </li>
+                  );
+                }
+
+                return (
+                  <li key={l.code}>
                     <button
                       type="button"
                       onClick={() => join(l.code)}
                       disabled={!nameReady || busy || l.playerCount >= l.maxPlayers}
-                      className="btn shrink-0 px-3 py-1.5 text-sm"
+                      className="inset group flex w-full items-center justify-between px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-gold hover:bg-black/55 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-black"
                     >
-                      Join
+                      {meta}
+                      <span className="title shrink-0 text-[0.55rem] text-gold opacity-60 transition group-hover:opacity-100">
+                        Join ›
+                      </span>
                     </button>
-                  ) : (
-                    <span className="pill bg-black/40 text-white/60">
-                      {l.status === "DRAFTING" ? "Drafting" : "In play"}
-                    </span>
-                  )}
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

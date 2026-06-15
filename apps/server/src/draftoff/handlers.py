@@ -7,7 +7,9 @@ server CONFIRMS by broadcasting authoritative state to the lobby room.
 from __future__ import annotations
 
 from .realtime import room, sio
-from .store import MAX_PLAYERS_PER_LOBBY, parse_settings, store
+from .store import MAX_PLAYERS_PER_LOBBY, is_valid_name, parse_settings, store
+
+NAME_RULE_ERROR = "Display name can only use letters, numbers and ! . £ $"
 
 
 def ok(data):
@@ -43,6 +45,8 @@ async def lobby_create(sid, data):
     name = (data.get("displayName") or "").strip()
     if not name:
         return err("Display name is required")
+    if not is_valid_name(name):
+        return err(NAME_RULE_ERROR)
 
     settings = parse_settings(data.get("settings"))
     lobby = store.create(host_name=name, settings=settings)
@@ -70,6 +74,8 @@ async def lobby_join(sid, data):
         return err("Lobby is full")
     if not name:
         return err("Display name is required")
+    if not is_valid_name(name):
+        return err(NAME_RULE_ERROR)
 
     user_id = lobby.add_player(name)
     await sio.enter_room(sid, room(code))

@@ -1,6 +1,19 @@
 import type { Match } from "./match.js";
 
-export type TournamentType = "knockout" | "round_robin";
+export type TournamentType =
+  | "round_robin"
+  | "double_round_robin"
+  | "knockout"
+  | "groups_knockout"
+  | "best_of";
+
+export const TOURNAMENT_LABELS: Record<TournamentType, string> = {
+  round_robin: "Round robin",
+  double_round_robin: "Double round robin",
+  knockout: "Knockout",
+  groups_knockout: "Groups → knockout",
+  best_of: "Best-of series",
+};
 
 /** One row in the round-robin standings table. */
 export interface StandingRow {

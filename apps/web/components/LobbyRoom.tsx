@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { TOURNAMENT_LABELS } from "@draftoff/shared";
 import { useLobby } from "@/hooks/useLobby";
 import { useSocket } from "@/hooks/useSocket";
 import { getUserId } from "@/lib/identity";
@@ -60,39 +61,51 @@ export function LobbyRoom({ code }: { code: string }) {
 
   return (
     <section className="mx-auto max-w-2xl space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-3">
         <h1 className="title text-xl">
-          Lobby <span className="font-mono text-gold">{code}</span>
+          {lobby.settings.visibility === "private" ? (
+            <>
+              Lobby <span className="font-mono text-gold">{code}</span>
+            </>
+          ) : (
+            <>{lobby.players.find((p) => p.isHost)?.displayName ?? "Open"}&apos;s draft</>
+          )}
         </h1>
-        <span className="pill bg-black/40 text-white/70">{lobby.status}</span>
+        <span className="pill shrink-0 bg-black/40 text-white/70">{lobby.status}</span>
       </header>
 
-      <div className="panel space-y-2">
-        <p className="text-sm font-bold uppercase tracking-wide text-white/60">
-          Invite link
-        </p>
-        <div className="flex gap-2">
-          <input
-            readOnly
-            value={shareUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="field text-sm"
-          />
-          <button type="button" onClick={copyLink} className="btn btn-grey shrink-0">
-            {copied ? "Copied!" : "Copy"}
-          </button>
+      {lobby.settings.visibility === "private" ? (
+        <div className="panel space-y-2">
+          <p className="text-sm font-bold uppercase tracking-wide text-white/60">
+            Invite link
+          </p>
+          <div className="flex gap-2">
+            <input
+              readOnly
+              value={shareUrl}
+              onFocus={(e) => e.currentTarget.select()}
+              className="field text-sm"
+            />
+            <button type="button" onClick={copyLink} className="btn btn-grey shrink-0">
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="panel">
+          <p className="text-white/70">
+            This lobby is public and listed in the lobby browser. Anyone can join.
+          </p>
+        </div>
+      )}
 
       <div className="panel space-y-3">
         <div className="flex items-baseline justify-between">
           <h2 className="title text-sm">Players</h2>
           <span className="text-xs font-bold uppercase tracking-wide text-white/40">
             {lobby.settings.teamSize}-a-side ·{" "}
-            {lobby.settings.tournamentType === "knockout"
-              ? "Knockout"
-              : "Round robin"}{" "}
-            · {lobby.settings.draftTimerSeconds}s
+            {TOURNAMENT_LABELS[lobby.settings.tournamentType]} ·{" "}
+            {lobby.settings.draftTimerSeconds}s
           </span>
         </div>
         <ul className="space-y-2">

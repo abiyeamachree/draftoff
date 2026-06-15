@@ -3,8 +3,8 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DraftOff",
-  description: "Multiplayer football draft, draft legends and simulate glory.",
+  title: "Draft",
+  description: "Pick 11 players and simulate a tournament!",
 };
 
 export default function RootLayout({
