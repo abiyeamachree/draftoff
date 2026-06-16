@@ -84,6 +84,41 @@ async def lobby_join(sid, data):
     return ok({"userId": user_id, "state": lobby.to_state()})
 
 
+@sio.on("lobby:customise")
+async def lobby_customise(sid, data):
+    data = data or {}
+    lobby = store.get((data.get("code") or "").upper())
+    if not lobby:
+        return err("Lobby not found")
+    user_id = data.get("userId") or ""
+    player, customise_err = lobby.update_player(
+        user_id,
+        icon=data.get("icon"),
+        display_name=data.get("displayName"),
+        formation=data.get("formation"),
+    )
+    if customise_err:
+        return err(customise_err)
+    if not player:
+        return err("You are not in this lobby")
+    await _broadcast_lobby(lobby)
+    await _broadcast_list()
+    return ok(lobby.to_state())
+
+
+@sio.on("chat:send")
+async def chat_send(sid, data):
+    data = data or {}
+    lobby = store.get((data.get("code") or "").upper())
+    if not lobby:
+        return err("Lobby not found")
+    message = lobby.chat_message(data.get("userId") or "", data.get("text") or "")
+    if not message:
+        return err("Could not send message")
+    await sio.emit("chat:message", message, to=room(lobby.code))
+    return ok(None)
+
+
 @sio.on("lobby:sync")
 async def lobby_sync(sid, data):
     data = data or {}

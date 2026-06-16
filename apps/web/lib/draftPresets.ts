@@ -24,45 +24,82 @@ export const POOL_LABELS: Record<PoolKey, string> = {
 };
 
 /**
- * Clubs grouped under their league. Including a league cascades to every club
- * here; excluding does the same. Curated placeholder data until the real player
- * pool is seeded from the CSV.
+ * Season-keyed club data. The same league has different members each season
+ * (promotion/relegation). Curated placeholder data until the player pool is
+ * seeded from the CSV.
  */
-export const LEAGUE_CLUBS: Record<string, string[]> = {
-  "Premier League": [
-    "Arsenal",
-    "Aston Villa",
-    "Bournemouth",
-    "Brentford",
-    "Brighton",
-    "Chelsea",
-    "Crystal Palace",
-    "Everton",
-    "Fulham",
-    "Ipswich Town",
-    "Leicester City",
-    "Liverpool",
-    "Manchester City",
-    "Manchester United",
-    "Newcastle United",
-    "Nottingham Forest",
-    "Southampton",
-    "Tottenham Hotspur",
-    "West Ham United",
-    "Wolverhampton Wanderers",
-  ],
+const PL_2526 = [
+  "Arsenal",
+  "Aston Villa",
+  "Bournemouth",
+  "Brentford",
+  "Brighton",
+  "Burnley",
+  "Chelsea",
+  "Crystal Palace",
+  "Everton",
+  "Fulham",
+  "Leeds United",
+  "Liverpool",
+  "Manchester City",
+  "Manchester United",
+  "Newcastle United",
+  "Nottingham Forest",
+  "Sunderland",
+  "Tottenham Hotspur",
+  "West Ham United",
+  "Wolverhampton Wanderers",
+];
+
+const PL_2425 = [
+  "Arsenal",
+  "Aston Villa",
+  "Bournemouth",
+  "Brentford",
+  "Brighton",
+  "Chelsea",
+  "Crystal Palace",
+  "Everton",
+  "Fulham",
+  "Ipswich Town",
+  "Leicester City",
+  "Liverpool",
+  "Manchester City",
+  "Manchester United",
+  "Newcastle United",
+  "Nottingham Forest",
+  "Southampton",
+  "Tottenham Hotspur",
+  "West Ham United",
+  "Wolverhampton Wanderers",
+];
+
+const CLUBS_2526: Record<string, string[]> = {
+  "Premier League": PL_2526,
   Championship: [
-    "Leeds United",
-    "Burnley",
+    "Leicester City",
+    "Ipswich Town",
+    "Southampton",
     "Sheffield United",
-    "Sunderland",
     "West Bromwich Albion",
     "Watford",
     "Middlesbrough",
     "Coventry City",
   ],
-  "League One": ["Birmingham City", "Wrexham", "Bolton Wanderers", "Huddersfield Town"],
-  "League Two": ["Notts County", "MK Dons", "Bradford City", "Port Vale"],
+  "League One": [
+    "Birmingham City",
+    "Wrexham",
+    "Bolton Wanderers",
+    "Huddersfield Town",
+    "Stockport County",
+  ],
+  "League Two": [
+    "Notts County",
+    "MK Dons",
+    "Bradford City",
+    "Port Vale",
+    "Walsall",
+  ],
   "La Liga": [
     "Real Madrid",
     "Barcelona",
@@ -153,9 +190,116 @@ export const LEAGUE_CLUBS: Record<string, string[]> = {
   MLS: ["Inter Miami", "LA Galaxy", "LAFC", "Seattle Sounders", "Atlanta United"],
 };
 
+// 24/25 differs from 25/26 mainly by promotion/relegation in England.
+const CLUBS_2425: Record<string, string[]> = {
+  ...CLUBS_2526,
+  "Premier League": PL_2425,
+  Championship: [
+    "Leeds United",
+    "Burnley",
+    "Sunderland",
+    "Sheffield United",
+    "West Bromwich Albion",
+    "Watford",
+    "Middlesbrough",
+    "Coventry City",
+  ],
+};
+
+/** Seasons available for league-team selection, newest first. */
+export const TEAM_SEASONS = [
+  "25/26",
+  "24/25",
+  "23/24",
+  "22/23",
+  "20/21",
+  "17/18",
+  "13/14",
+] as const;
+export type TeamSeason = (typeof TEAM_SEASONS)[number];
+
+const SEASON_CLUB_OVERRIDES: Partial<Record<TeamSeason, Record<string, string[]>>> = {
+  "25/26": CLUBS_2526,
+  "24/25": CLUBS_2425,
+};
+
+/** League -> clubs for each season (promotion/relegation differs by year). */
+export const SEASON_LEAGUE_CLUBS: Record<string, Record<string, string[]>> =
+  Object.fromEntries(
+    TEAM_SEASONS.map((s) => [s, SEASON_CLUB_OVERRIDES[s] ?? CLUBS_2425])
+  );
+
+/** Latest-season league -> clubs map (used by the pool picker's nested clubs). */
+export const LEAGUE_CLUBS = CLUBS_2526;
+
+/** A league team is a club in a specific season, e.g. "Arsenal (25/26)". */
+export function teamLabel(club: string, season: string): string {
+  return `${club} (${season})`;
+}
+
+export function parseTeamLabel(label: string): { club: string; season: string } {
+  const m = label.match(/^(.+) \(([^)]+)\)$/);
+  return m ? { club: m[1], season: m[2] } : { club: label, season: "" };
+}
+
+/** Group selected league teams by season for display. */
+export function teamsBySeason(teams: string[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const t of teams) {
+    const { club, season } = parseTeamLabel(t);
+    if (!season) continue;
+    (out[season] ??= []).push(club);
+  }
+  return out;
+}
+
+/** Champions League 25/26 league-phase clubs (curated placeholder). */
+export const UCL_2526 = [
+  "Real Madrid",
+  "Barcelona",
+  "Atletico Madrid",
+  "Athletic Bilbao",
+  "Villarreal",
+  "Liverpool",
+  "Arsenal",
+  "Manchester City",
+  "Newcastle United",
+  "Tottenham Hotspur",
+  "Chelsea",
+  "Inter",
+  "Atalanta",
+  "Juventus",
+  "Napoli",
+  "Bayern Munich",
+  "Bayer Leverkusen",
+  "Borussia Dortmund",
+  "Eintracht Frankfurt",
+  "Paris Saint-Germain",
+  "Marseille",
+  "Monaco",
+  "Sporting CP",
+  "Benfica",
+  "PSV Eindhoven",
+  "Ajax",
+  "Club Brugge",
+  "Union Saint-Gilloise",
+  "Galatasaray",
+  "Olympiacos",
+  "Slavia Prague",
+  "Bodo/Glimt",
+  "Copenhagen",
+  "Qarabag",
+  "Pafos",
+  "Kairat",
+];
+
+function leagueTeams2526(league: string, count: number): string[] {
+  return (CLUBS_2526[league] ?? []).slice(0, count).map((c) => teamLabel(c, "25/26"));
+}
+
 export const POOL_OPTIONS: Record<PoolKey, string[]> = {
   leagues: Object.keys(LEAGUE_CLUBS),
-  seasons: ["FC 26", "FC 25", "FC 24", "FIFA 23", "FIFA 21", "FIFA 18", "FIFA 14"],
+  seasons: ["25/26", "24/25", "23/24", "22/23", "20/21", "17/18", "13/14"],
   nations: [
     "England",
     "France",
@@ -181,31 +325,34 @@ export const BUILT_IN_PRESETS: Preset[] = [
   {
     name: "Premier League only",
     emblem: "prem38",
-    description: "Draft only from the 20 Premier League clubs.",
+    description: "20-team league of the 25/26 Premier League clubs.",
     config: {
+      name: "Premier League Only",
+      numTeams: 20,
+      tournamentType: "round_robin",
       teamSize: 11,
-      draftTimerSeconds: 30,
-      tournamentType: "knockout",
-      peakCardsEnabled: true,
+      teams: leagueTeams2526("Premier League", 20),
       pool: {
         ...emptyPoolRules(),
-        include: {
-          ...emptyPoolFilter(),
-          leagues: ["Premier League"],
-        },
+        include: { ...emptyPoolFilter(), leagues: ["Premier League"] },
       },
     },
   },
   {
     name: "English football pyramid",
     emblem: "england",
-    description:
-      "Draft players from across all four leagues of the English league pyramid.",
+    description: "Five clubs from each tier of the English pyramid.",
     config: {
+      name: "English Football Pyramid",
+      numTeams: 20,
+      tournamentType: "round_robin",
       teamSize: 11,
-      draftTimerSeconds: 30,
-      tournamentType: "knockout",
-      peakCardsEnabled: true,
+      teams: [
+        ...leagueTeams2526("Premier League", 5),
+        ...leagueTeams2526("Championship", 5),
+        ...leagueTeams2526("League One", 5),
+        ...leagueTeams2526("League Two", 5),
+      ],
       pool: {
         ...emptyPoolRules(),
         include: {
@@ -218,40 +365,29 @@ export const BUILT_IN_PRESETS: Preset[] = [
   {
     name: "UCL teams",
     emblem: "star",
-    description:
-      "Make a draft with players from all the teams that have qualified for the Champions League.",
+    description: "Every 25/26 Champions League club in a knockout.",
     config: {
-      teamSize: 11,
-      draftTimerSeconds: 30,
+      name: "Champions League",
+      numTeams: UCL_2526.length,
       tournamentType: "knockout",
-      peakCardsEnabled: true,
+      teamSize: 11,
+      teams: UCL_2526.map((c) => teamLabel(c, "25/26")),
       pool: {
         ...emptyPoolRules(),
-        include: {
-          ...emptyPoolFilter(),
-          clubs: [
-            "Real Madrid",
-            "Barcelona",
-            "Manchester City",
-            "Liverpool",
-            "Bayern Munich",
-            "Paris Saint-Germain",
-            "Inter",
-            "Borussia Dortmund",
-          ],
-        },
+        include: { ...emptyPoolFilter(), clubs: UCL_2526 },
       },
     },
   },
   {
     name: "World Cup 26",
     emblem: "globe",
-    description: "Draft from the nations heading to the 2026 World Cup",
+    description: "48 nations, groups into a knockout.",
     config: {
+      name: "World Cup 26",
+      numTeams: 48,
+      tournamentType: "groups_knockout",
       teamSize: 11,
-      draftTimerSeconds: 30,
-      tournamentType: "knockout",
-      peakCardsEnabled: true,
+      teams: [],
       pool: {
         ...emptyPoolRules(),
         include: {
@@ -275,12 +411,13 @@ export const BUILT_IN_PRESETS: Preset[] = [
   {
     name: "Rest of the world",
     emblem: "world",
-    description: "Draft from clubs and nations outside Europe.",
+    description: "Knockout of clubs and nations outside Europe.",
     config: {
-      teamSize: 11,
-      draftTimerSeconds: 30,
+      name: "Rest of the World",
+      numTeams: 16,
       tournamentType: "knockout",
-      peakCardsEnabled: true,
+      teamSize: 11,
+      teams: [],
       pool: {
         ...emptyPoolRules(),
         include: {

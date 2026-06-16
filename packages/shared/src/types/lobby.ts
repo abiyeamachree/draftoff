@@ -48,13 +48,19 @@ export interface PoolRules {
 
 /** Host-configurable lobby settings. */
 export interface LobbySettings {
-  /** Number of managers (teams) taking part. */
-  numPlayers: number;
+  /** Display name of the draft. */
+  name: string;
+  /** Total teams in the league/tournament (humans + filler clubs). */
+  numTeams: number;
+  /** Real clubs that fill the league spots not taken by human managers. */
+  teams: string[];
   /** Footballers per squad. */
   teamSize: TeamSize;
   tournamentType: TournamentType;
   draftType: DraftType;
   draftTimerSeconds: number;
+  /** Players per pack when draftType is "pack". */
+  packSize: number;
   visibility: LobbyVisibility;
   pool: PoolRules;
   peakCardsEnabled: boolean;
@@ -84,11 +90,14 @@ export const MAX_PLAYERS_PER_LOBBY = 20;
 export const MIN_PLAYERS_PER_LOBBY = 2;
 
 export const DEFAULT_LOBBY_SETTINGS: LobbySettings = {
-  numPlayers: 4,
+  name: "",
+  numTeams: 8,
+  teams: [],
   teamSize: 11,
   tournamentType: "knockout",
   draftType: "snake",
   draftTimerSeconds: 30,
+  packSize: 5,
   visibility: "public",
   pool: emptyPoolRules(),
   peakCardsEnabled: true,
@@ -134,11 +143,73 @@ export interface LobbyPlayer {
   /** Stable user id (persisted). */
   userId: string;
   displayName: string;
+  /** Emoji avatar chosen on the lobby screen. */
+  icon: string;
+  /** Chosen formation (e.g. "4-3-3"); empty until picked. */
+  formation: string;
   isHost: boolean;
   isReady: boolean;
   /** Draft slot (0-based), assigned when the draft starts. */
   draftSlot: number | null;
   connection: ConnectionStatus;
+}
+
+/** Emoji avatars selectable on the lobby screen. */
+export const PLAYER_ICONS = [
+  "⚽", "🔥", "🦁", "🐉", "👑", "🦅", "🦈", "🐺",
+  "🤖", "👽", "💀", "🎯", "⚡", "🌟", "🚀", "🎩",
+] as const;
+
+/** Outfield shapes per squad size (GK is always added on top). */
+export const FORMATIONS_BY_SIZE: Record<number, string[]> = {
+  11: ["4-4-2", "4-3-3", "3-5-2", "4-2-3-1", "5-3-2", "3-4-3"],
+  8: ["3-3-1", "3-2-2", "2-3-2", "3-1-3"],
+  5: ["2-1-1", "1-2-1", "2-2-0", "1-1-2"],
+};
+
+/** Default formation for a squad size. */
+export function defaultFormation(teamSize: number): string {
+  return (FORMATIONS_BY_SIZE[teamSize] ?? FORMATIONS_BY_SIZE[11])[0];
+}
+
+/** Outfield rows (defence -> attack) parsed from a formation string. */
+export function formationRows(formation: string): number[] {
+  return formation
+    .split("-")
+    .map((n) => parseInt(n, 10))
+    .filter((n) => Number.isFinite(n));
+}
+
+/** Rocket-League-style preset quick-chat phrases. */
+export const QUICK_CHAT_PHRASES = [
+  "Great pick!",
+  "What a player!",
+  "Oh no!",
+  "Nice!",
+  "Wow!",
+  "No way!",
+  "Steady...",
+  "Calculated.",
+  "Robbery!",
+  "Wheeew.",
+  "GG",
+  "Close one!",
+] as const;
+
+/** Emoji reactions for quick chat. */
+export const QUICK_CHAT_EMOJIS = [
+  "😂", "😭", "🔥", "👏", "💀", "🐐", "😱", "🤝",
+  "🙏", "😤", "🥶", "🤯", "👀", "💪", "🤡", "❤️",
+] as const;
+
+/** A single chat message broadcast within a lobby/draft room. */
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  name: string;
+  icon: string;
+  text: string;
+  at: number;
 }
 
 /** Full authoritative lobby snapshot broadcast to clients. */
@@ -153,9 +224,11 @@ export interface LobbyState {
 /** Compact lobby info for the public lobby browser on the home screen. */
 export interface LobbySummary {
   code: string;
+  name: string;
   hostName: string;
   playerCount: number;
   maxPlayers: number;
+  numTeams: number;
   status: LobbyStatus;
   teamSize: TeamSize;
   tournamentType: TournamentType;

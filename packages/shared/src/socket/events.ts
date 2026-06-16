@@ -11,7 +11,12 @@
  */
 
 import type { DraftState } from "../types/draft.js";
-import type { LobbySettings, LobbyState, LobbySummary } from "../types/lobby.js";
+import type {
+  ChatMessage,
+  LobbySettings,
+  LobbyState,
+  LobbySummary,
+} from "../types/lobby.js";
 import type { MatchResult } from "../types/match.js";
 import type { PlayerPoolEntry } from "../types/player.js";
 import type { TournamentState } from "../types/tournament.js";
@@ -84,6 +89,22 @@ export interface ClientToServerEvents {
     payload: { code: string; ready: boolean },
     ack: (res: Ack<null>) => void
   ) => void;
+  /** Set this player's team icon, name and formation on the lobby screen. */
+  "lobby:customise": (
+    payload: {
+      code: string;
+      userId?: string;
+      icon?: string;
+      displayName?: string;
+      formation?: string;
+    },
+    ack: (res: Ack<LobbyState>) => void
+  ) => void;
+  /** Send a preset quick-chat phrase or emoji to the room. */
+  "chat:send": (
+    payload: { code: string; userId?: string; text: string },
+    ack: (res: Ack<null>) => void
+  ) => void;
   "lobby:updateSettings": (
     payload: { code: string; settings: Partial<LobbySettings> },
     ack: (res: Ack<null>) => void
@@ -124,6 +145,8 @@ export interface ServerToClientEvents {
   "draft:tick": (payload: { timeRemaining: number }) => void;
   "sim:matchResult": (result: MatchResult) => void;
   "tournament:state": (state: TournamentState) => void;
+  /** A quick-chat message broadcast to everyone in the room. */
+  "chat:message": (message: ChatMessage) => void;
   "error": (payload: { code: string; message: string }) => void;
 }
 

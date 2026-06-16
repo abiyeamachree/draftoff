@@ -8,15 +8,31 @@ from __future__ import annotations
 
 import random
 import re
+import time
 import uuid
 
 from .draft import build_draft_state
 
 MAX_PLAYERS_PER_LOBBY = 20
 NAME_MAX_LENGTH = 24
+DRAFT_NAME_MAX = 40
+CHAT_MAX = 80
 
 # Display names: letters, numbers and ! . £ $ only. No spaces.
 _NAME_RE = re.compile(r"^[A-Za-z0-9!.£$]+$")
+# Draft names are friendlier: also allow spaces.
+_DRAFT_NAME_RE = re.compile(r"^[A-Za-z0-9!.£$ ]+$")
+
+PLAYER_ICONS = [
+    "⚽", "🔥", "🦁", "🐉", "👑", "🦅", "🦈", "🐺",
+    "🤖", "👽", "💀", "🎯", "⚡", "🌟", "🚀", "🎩",
+]
+
+FORMATIONS_BY_SIZE = {
+    11: ["4-4-2", "4-3-3", "3-5-2", "4-2-3-1", "5-3-2", "3-4-3"],
+    8: ["3-3-1", "3-2-2", "2-3-2", "3-1-3"],
+    5: ["2-1-1", "1-2-1", "2-2-0", "1-1-2"],
+}
 
 
 def is_valid_name(name: str) -> bool:
@@ -31,6 +47,7 @@ ALLOWED_TOURNAMENTS = {
     "best_of",
 }
 ALLOWED_DRAFT_TYPES = {"snake", "linear", "pack"}
+LEAGUE_FORMATS = {"round_robin", "double_round_robin"}
 ALLOWED_VISIBILITY = {"public", "private"}
 ALLOWED_POOL_LOGIC = {"OR", "AND"}
 POOL_KEYS = ("leagues", "seasons", "nations", "clubs")
@@ -45,8 +62,10 @@ BOOL_KEYS = (
 
 MIN_TIMER = 5
 MAX_TIMER = 30
-MIN_PLAYERS = 2
-MAX_PLAYERS = 20
+MIN_TEAMS = 2
+MAX_TEAMS_LEAGUE = 24
+MAX_TEAMS_TOURNAMENT = 64
+MAX_PACK = 20
 MAX_CAP = 50
 
 
@@ -76,11 +95,14 @@ def _clean_filter(raw: object) -> dict:
 
 
 DEFAULT_SETTINGS: dict = {
-    "numPlayers": 4,
+    "name": "",
+    "numTeams": 8,
+    "teams": [],
     "teamSize": 11,
     "tournamentType": "knockout",
     "draftType": "snake",
     "draftTimerSeconds": 30,
+    "packSize": 5,
     "visibility": "public",
     "peakCardsEnabled": True,
     "maxPerClub": 0,
@@ -107,9 +129,38 @@ def parse_settings(raw: dict | None) -> dict:
     if not isinstance(raw, dict):
         return settings
 
-    num_players = raw.get("numPlayers")
-    if isinstance(num_players, int) and MIN_PLAYERS <= num_players <= MAX_PLAYERS:
-        settings["numPlayers"] = num_players
+    fmt = raw.get("tournamentType")
+    if fmt not in ALLOWED_TOURNAMENTS:
+        fmt = settings["tournamentType"]
+    team_cap = MAX_TEAMS_LEAGUE if fmt in LEAGUE_FORMATS else MAX_TEAMS_TOURNAMENT
+
+    num_teams = raw.get("numTeams")
+    if (
+        isinstance(num_teams, int)
+        and not isinstance(num_teams, bool)
+        and MIN_TEAMS <= num_teams <= team_cap
+    ):
+        settings["numTeams"] = num_teams
+
+    pack_size = raw.get("packSize")
+    if isinstance(pack_size, int) and not isinstance(pack_size, bool) and 1 <= pack_size <= MAX_PACK:
+        settings["packSize"] = pack_size
+
+    name = raw.get("name")
+    if isinstance(name, str):
+        trimmed = name.strip()[:DRAFT_NAME_MAX]
+        if trimmed and _DRAFT_NAME_RE.match(trimmed):
+            settings["name"] = trimmed
+
+    teams = raw.get("teams")
+    if isinstance(teams, list):
+        cleaned_teams: list[str] = []
+        for t in teams:
+            if isinstance(t, str) and t.strip():
+                value = t.strip()[:64]
+                if value not in cleaned_teams:
+                    cleaned_teams.append(value)
+        settings["teams"] = cleaned_teams[:200]
 
     team_size = raw.get("teamSize")
     if isinstance(team_size, int) and team_size in ALLOWED_TEAM_SIZES:
@@ -161,10 +212,14 @@ class Lobby:
 
     def add_player(self, display_name: str, is_host: bool = False) -> str:
         user_id = _new_user_id()
+        taken = {p.get("icon") for p in self.players}
+        icon = next((i for i in PLAYER_ICONS if i not in taken), PLAYER_ICONS[0])
         self.players.append(
             {
                 "userId": user_id,
                 "displayName": display_name,
+                "icon": icon,
+                "formation": FORMATIONS_BY_SIZE.get(self.settings["teamSize"], FORMATIONS_BY_SIZE[11])[0],
                 "isHost": is_host,
                 "isReady": is_host,
                 "draftSlot": None,
@@ -172,6 +227,32 @@ class Lobby:
             }
         )
         return user_id
+
+    def find_player(self, user_id: str) -> dict | None:
+        return next((p for p in self.players if p["userId"] == user_id), None)
+
+    def update_player(
+        self,
+        user_id: str,
+        icon=None,
+        display_name=None,
+        formation=None,
+    ) -> tuple[dict | None, str | None]:
+        player = self.find_player(user_id)
+        if not player:
+            return None, "You are not in this lobby"
+        if isinstance(icon, str) and 0 < len(icon) <= 8:
+            if any(
+                p.get("icon") == icon and p["userId"] != user_id for p in self.players
+            ):
+                return None, "That icon is already taken"
+            player["icon"] = icon
+        if isinstance(display_name, str) and is_valid_name(display_name.strip()):
+            player["displayName"] = display_name.strip()
+        allowed_formations = FORMATIONS_BY_SIZE.get(self.settings["teamSize"], [])
+        if formation in allowed_formations:
+            player["formation"] = formation
+        return player, None
 
     def start(self) -> None:
         for slot, player in enumerate(self.players):
@@ -188,13 +269,31 @@ class Lobby:
             "players": self.players,
         }
 
+    def chat_message(self, user_id: str, text: str) -> dict | None:
+        player = self.find_player(user_id)
+        if not player:
+            return None
+        clean = (text or "").strip()[:CHAT_MAX]
+        if not clean:
+            return None
+        return {
+            "id": uuid.uuid4().hex[:12],
+            "userId": user_id,
+            "name": player["displayName"],
+            "icon": player.get("icon", "⚽"),
+            "text": clean,
+            "at": int(time.time() * 1000),
+        }
+
     def to_summary(self) -> dict:
         host = next((p for p in self.players if p["isHost"]), None)
         return {
             "code": self.code,
+            "name": self.settings.get("name", ""),
             "hostName": host["displayName"] if host else "—",
             "playerCount": len(self.players),
             "maxPlayers": MAX_PLAYERS_PER_LOBBY,
+            "numTeams": self.settings["numTeams"],
             "status": self.status,
             "teamSize": self.settings["teamSize"],
             "tournamentType": self.settings["tournamentType"],

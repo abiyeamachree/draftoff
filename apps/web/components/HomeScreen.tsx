@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TOURNAMENT_LABELS } from "@draftoff/shared";
 import { useLobbyList } from "@/hooks/useLobbyList";
 import { useSocket } from "@/hooks/useSocket";
@@ -13,10 +13,12 @@ export function HomeScreen() {
   const { socket } = useSocket();
   const { lobbies } = useLobbyList();
 
-  const [displayName, setDisplayName] = useState(() => sanitiseName(getName()));
+  const [displayName, setDisplayName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => setDisplayName(sanitiseName(getName())), []);
 
   const nameReady = displayName.trim().length > 0;
 
@@ -125,9 +127,11 @@ export function HomeScreen() {
               {lobbies.map((l) => {
                 const meta = (
                   <div className="min-w-0">
-                    <p className="truncate font-extrabold">{l.hostName}&apos;s draft</p>
+                    <p className="truncate font-extrabold">
+                      {l.name || `${l.hostName}'s draft`}
+                    </p>
                     <p className="text-xs font-medium text-white/50">
-                      {l.playerCount}/{l.maxPlayers} · {l.teamSize}-a-side ·{" "}
+                      {l.playerCount}/{l.numTeams} teams · {l.teamSize}-a-side ·{" "}
                       {TOURNAMENT_LABELS[l.tournamentType]}
                     </p>
                   </div>

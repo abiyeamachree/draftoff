@@ -15,6 +15,18 @@ export const TOURNAMENT_LABELS: Record<TournamentType, string> = {
   best_of: "Best-of series",
 };
 
+/** League-style formats are capped tighter than knockout-style tournaments. */
+export const LEAGUE_FORMATS: TournamentType[] = ["round_robin", "double_round_robin"];
+
+export const MIN_TEAMS = 2;
+export const MAX_TEAMS_LEAGUE = 24;
+export const MAX_TEAMS_TOURNAMENT = 64;
+
+/** Maximum number of teams allowed for a given competition format. */
+export function maxTeamsForFormat(format: TournamentType): number {
+  return LEAGUE_FORMATS.includes(format) ? MAX_TEAMS_LEAGUE : MAX_TEAMS_TOURNAMENT;
+}
+
 /** One row in the round-robin standings table. */
 export interface StandingRow {
   userId: string;

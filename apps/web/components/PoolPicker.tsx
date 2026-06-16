@@ -13,7 +13,7 @@ type Side = "include" | "exclude";
 
 const SIMPLE_SECTIONS: { key: PoolKey; label: string }[] = [
   { key: "nations", label: "Nations" },
-  { key: "seasons", label: "Games" },
+  { key: "seasons", label: "Seasons" },
 ];
 
 function PlusMinus({

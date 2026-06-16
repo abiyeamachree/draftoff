@@ -85,4 +85,204 @@ body::after {
     font-family: "Press Start 2P", system-ui, monospace;
     font-size: 0.55rem;
   }
+
+  /* Rocket League-style overlay chat (no panel bg). */
+  .chat-feed {
+    text-shadow:
+      1px 1px 0 #000,
+      -1px -1px 0 #000,
+      1px -1px 0 #000,
+      -1px 1px 0 #000;
+  }
+
+  .chat-line {
+    font-family: "VT323", monospace;
+    font-size: 1.15rem;
+    animation: chat-fade-in 0.15s ease-out;
+  }
+
+  .quick-chat-trigger {
+    @apply flex h-12 w-12 items-center justify-center border-2 border-black text-xl;
+    background: rgba(0, 0, 0, 0.45);
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+    text-shadow: 1px 1px 0 #000;
+  }
+  .quick-chat-trigger:hover {
+    background: rgba(0, 0, 0, 0.65);
+  }
+
+  .quick-chat-wheel {
+    background: rgba(0, 0, 0, 0.72);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6);
+  }
+
+  .quick-chat-btn {
+    @apply border border-black/60 bg-black/50 text-white hover:bg-black/70;
+    font-family: "VT323", monospace;
+  }
+
+  .speech-bubble {
+    @apply rounded border-2 border-black px-2 py-0.5 text-xs font-bold text-black;
+    background: #fff;
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+    animation: bubble-pop 0.2s ease-out;
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .speech-bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #fff;
+    border-bottom: 0;
+  }
+
+  /* One half of a football pitch — goal at bottom, halfway line at top. */
+  .pitch {
+    @apply relative mx-auto w-full overflow-hidden;
+    aspect-ratio: 3 / 4;
+    max-width: 28rem;
+    border: 3px solid rgba(255, 255, 255, 0.95);
+    border-top-width: 2px;
+    box-shadow:
+      inset 0 0 40px rgba(0, 0, 0, 0.25),
+      0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  .pitch-compact {
+    max-width: 100%;
+    aspect-ratio: 3 / 4;
+  }
+
+  .pitch-grass {
+    @apply absolute inset-0;
+    background: repeating-linear-gradient(
+      180deg,
+      #3a9e54 0 10%,
+      #348f4c 10% 20%
+    );
+  }
+
+  .pitch-markings {
+    @apply pointer-events-none absolute inset-0;
+  }
+
+  .pitch-halfway {
+    @apply absolute left-0 right-0 top-0;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  /* Centre-circle arc sitting on the halfway line. */
+  .pitch-circle-arc {
+    @apply absolute rounded-full border-2 border-white/85;
+    left: 50%;
+    top: 0;
+    width: 44%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  .pitch-box {
+    @apply absolute border-2 border-white/85;
+    left: 50%;
+    width: 62%;
+    height: 28%;
+    transform: translateX(-50%);
+  }
+
+  .pitch-box-goal {
+    bottom: 0;
+    border-bottom: none;
+  }
+
+  .pitch-goal-area {
+    @apply absolute bottom-0 border-2 border-white/85;
+    left: 50%;
+    width: 38%;
+    height: 12%;
+    transform: translateX(-50%);
+    border-bottom: none;
+  }
+
+  .pitch-spot {
+    @apply absolute rounded-full bg-white/90;
+    width: 6px;
+    height: 6px;
+    transform: translate(-50%, -50%);
+  }
+
+  .pitch-spot-pen {
+    left: 50%;
+    bottom: 20%;
+  }
+
+  .pitch-header {
+    @apply absolute left-0 right-0 top-0 z-10 flex items-center justify-center gap-2 border-b border-white/30 py-1;
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .pitch-players {
+    @apply absolute inset-0 z-[5];
+  }
+
+  .pitch-player {
+    @apply absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center;
+  }
+
+  .pitch-dot {
+    @apply flex h-9 w-9 items-center justify-center rounded-full border-2 border-white shadow-md;
+    font-family: "Press Start 2P", system-ui, monospace;
+    font-size: 0.45rem;
+  }
+
+  .pitch-dot-gk {
+    @apply border-yellow-300 bg-yellow-500 text-black;
+  }
+
+  .pitch-dot-filled {
+    @apply bg-red-700 text-white;
+  }
+
+  .pitch-dot-empty {
+    @apply border-dashed border-white/50 bg-black/25 text-white/40;
+  }
+
+  .pitch-plus {
+    font-size: 0.7rem;
+  }
+
+  .pitch-rating {
+    font-size: 0.5rem;
+  }
+
+  .pitch-name {
+    @apply mt-0.5 max-w-[4.5rem] truncate rounded bg-black/55 px-1 text-[0.55rem] font-bold text-white;
+    text-shadow: 1px 1px 0 #000;
+  }
+}
+
+@keyframes chat-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bubble-pop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

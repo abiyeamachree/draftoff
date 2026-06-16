@@ -11,6 +11,8 @@ import {
   emptyPoolFilter,
   emptyPoolRules,
   type LobbySettings,
+  maxTeamsForFormat,
+  MIN_TEAMS,
   type PoolRules,
   type TeamSize,
   TOURNAMENT_LABELS,
@@ -21,13 +23,11 @@ import { getName, setName, setUserId } from "@/lib/identity";
 import { sanitiseName } from "@/lib/name";
 import {
   BUILT_IN_PRESETS,
-  deletePreset,
-  loadPresets,
   type Preset,
   type PresetEmblem,
-  savePreset,
 } from "@/lib/draftPresets";
 import { PoolPicker } from "@/components/PoolPicker";
+import { TeamPicker } from "@/components/TeamPicker";
 
 const TEAM_SIZES: TeamSize[] = [11, 8, 5];
 const FORMATS: TournamentType[] = [
@@ -115,27 +115,38 @@ export function CreateDraftForm() {
   const router = useRouter();
   const { socket } = useSocket();
 
-  const [displayName, setDisplayName] = useState(() => sanitiseName(getName()));
+  const [displayName, setDisplayName] = useState("");
   const [settings, setSettings] = useState<LobbySettings>(() => ({
     ...DEFAULT_LOBBY_SETTINGS,
     pool: emptyPoolRules(),
   }));
   const [poolOpen, setPoolOpen] = useState(false);
+  const [teamsOpen, setTeamsOpen] = useState(false);
+  const [packOpen, setPackOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-
-  const [presets, setPresets] = useState<Preset[]>([]);
-  const [presetQuery, setPresetQuery] = useState("");
-  const [presetName, setPresetName] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => setPresets(loadPresets()), []);
+  useEffect(() => setDisplayName(sanitiseName(getName())), []);
 
   const nameReady = displayName.trim().length > 0;
 
   function update(patch: Partial<LobbySettings>) {
     setSettings((s) => ({ ...s, ...patch }));
+  }
+
+  function setFormat(format: TournamentType) {
+    setSettings((s) => ({
+      ...s,
+      tournamentType: format,
+      numTeams: Math.min(s.numTeams, maxTeamsForFormat(format)),
+    }));
+  }
+
+  function setDraftType(type: DraftType) {
+    update({ draftType: type });
+    if (type === "pack") setPackOpen(true);
   }
 
   function setPool(updater: (prev: PoolRules) => PoolRules) {
@@ -146,6 +157,7 @@ export function CreateDraftForm() {
     setSettings((s) => ({
       ...s,
       ...p.config,
+      teams: p.config.teams ?? [],
       pool: p.config.pool
         ? {
             logic: p.config.pool.logic ?? "OR",
@@ -156,15 +168,11 @@ export function CreateDraftForm() {
     }));
   }
 
+  const teamCap = maxTeamsForFormat(settings.tournamentType);
   const poolCount = countPoolRules(settings.pool);
-
-  function saveCurrent() {
-    const name = presetName.trim();
-    if (!name) return;
-    const { visibility: _visibility, ...config } = settings;
-    setPresets(savePreset({ name, config }));
-    setPresetName("");
-  }
+  const setTeams = (updater: (prev: string[]) => string[]) =>
+    setSettings((s) => ({ ...s, teams: updater(s.teams) }));
+  const fillerSpots = Math.max(0, settings.numTeams - 1);
 
   function create() {
     if (!nameReady || busy) return;
@@ -186,10 +194,6 @@ export function CreateDraftForm() {
       }
     );
   }
-
-  const filteredPresets = presets.filter((p) =>
-    p.name.toLowerCase().includes(presetQuery.trim().toLowerCase())
-  );
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
@@ -236,6 +240,16 @@ export function CreateDraftForm() {
 
       <div className="panel space-y-5">
         <label className="block">
+          {fieldLabel("Draft name")}
+          <input
+            className="field mt-1"
+            value={settings.name}
+            onChange={(e) => update({ name: e.target.value.slice(0, 40) })}
+            placeholder="e.g. Sunday League Cup"
+          />
+        </label>
+
+        <label className="block">
           {fieldLabel("Display name")}
           <input
             className="field mt-1"
@@ -246,15 +260,31 @@ export function CreateDraftForm() {
         </label>
 
         <label className="block">
-          {fieldLabel("Number of players")}{" "}
-          <span className="font-mono text-gold">{settings.numPlayers}</span>
+          {fieldLabel("Format")}
+          <select
+            value={settings.tournamentType}
+            onChange={(e) => setFormat(e.target.value as TournamentType)}
+            className="field mt-1"
+          >
+            {FORMATS.map((f) => (
+              <option key={f} value={f} className="bg-pitch-dark">
+                {TOURNAMENT_LABELS[f]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          {fieldLabel("Number of teams")}{" "}
+          <span className="font-mono text-gold">{settings.numTeams}</span>
+          <span className="ml-2 text-xs text-white/40">max {teamCap}</span>
           <input
             type="range"
-            min={2}
-            max={20}
+            min={MIN_TEAMS}
+            max={teamCap}
             step={1}
-            value={settings.numPlayers}
-            onChange={(e) => update({ numPlayers: Number(e.target.value) })}
+            value={settings.numTeams}
+            onChange={(e) => update({ numTeams: Number(e.target.value) })}
             className="mt-2 w-full accent-gold"
           />
         </label>
@@ -274,23 +304,6 @@ export function CreateDraftForm() {
             ))}
           </div>
         </div>
-
-        <label className="block">
-          {fieldLabel("Format")}
-          <select
-            value={settings.tournamentType}
-            onChange={(e) =>
-              update({ tournamentType: e.target.value as TournamentType })
-            }
-            className="field mt-1"
-          >
-            {FORMATS.map((f) => (
-              <option key={f} value={f} className="bg-pitch-dark">
-                {TOURNAMENT_LABELS[f]}
-              </option>
-            ))}
-          </select>
-        </label>
 
         <div>
           {fieldLabel("Visibility")}
@@ -324,6 +337,27 @@ export function CreateDraftForm() {
             {describePool(settings.pool)}
           </p>
         </div>
+
+        <div className="space-y-2">
+          {fieldLabel("League teams")}
+          <button
+            type="button"
+            onClick={() => setTeamsOpen(true)}
+            className="btn btn-grey w-full py-3 text-[0.6rem]"
+          >
+            {settings.teams.length > 0
+              ? `Edit teams (${settings.teams.length})`
+              : "Pick clubs to fill the league…"}
+          </button>
+          <p
+            className="text-white/60"
+            style={{ fontFamily: "VT323, monospace", fontSize: "1.05rem" }}
+          >
+            {settings.teams.length === 0
+              ? `Up to ${fillerSpots} non-human spots will be filled with bots.`
+              : `${Math.min(settings.teams.length, fillerSpots)} of ${fillerSpots} non-human spots filled by your chosen clubs.`}
+          </p>
+        </div>
       </div>
 
       <div className="panel space-y-4">
@@ -345,7 +379,7 @@ export function CreateDraftForm() {
                   <button
                     key={t}
                     type="button"
-                    onClick={() => update({ draftType: t })}
+                    onClick={() => setDraftType(t)}
                     className={`btn flex-1 px-2 text-[0.55rem] ${
                       settings.draftType === t ? "" : "btn-grey"
                     }`}
@@ -354,6 +388,16 @@ export function CreateDraftForm() {
                   </button>
                 ))}
               </div>
+              {settings.draftType === "pack" && (
+                <button
+                  type="button"
+                  onClick={() => setPackOpen(true)}
+                  className="mt-2 w-full text-left text-white/60 hover:text-gold"
+                  style={{ fontFamily: "VT323, monospace", fontSize: "1.05rem" }}
+                >
+                  {settings.packSize} random players per pack — edit
+                </button>
+              )}
             </div>
 
             <label className="block">
@@ -421,59 +465,51 @@ export function CreateDraftForm() {
         />
       )}
 
-      <div className="panel space-y-3">
-        <span className="title text-sm">Saved presets</span>
-        <div className="flex gap-2">
-          <input
-            value={presetName}
-            onChange={(e) => setPresetName(e.target.value)}
-            placeholder="Name this preset"
-            className="field"
-          />
-          <button
-            type="button"
-            onClick={saveCurrent}
-            disabled={!presetName.trim()}
-            className="btn btn-grey shrink-0"
-          >
-            Save
-          </button>
-        </div>
+      {teamsOpen && (
+        <TeamPicker
+          teams={settings.teams}
+          setTeams={setTeams}
+          spots={fillerSpots}
+          onClose={() => setTeamsOpen(false)}
+        />
+      )}
 
-        {presets.length > 0 && (
-          <>
+      {packOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPackOpen(false)}
+        >
+          <div
+            className="panel w-full max-w-xs space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="title text-sm">Pack size</h2>
+            <p
+              className="normal-case leading-snug text-white/70"
+              style={{ fontFamily: "VT323, monospace", fontSize: "1.05rem" }}
+            >
+              How many random players in each pack?
+            </p>
+            <div className="text-center font-mono text-2xl text-gold">{settings.packSize}</div>
             <input
-              value={presetQuery}
-              onChange={(e) => setPresetQuery(e.target.value)}
-              placeholder="Search presets"
-              className="field"
+              type="range"
+              min={1}
+              max={20}
+              step={1}
+              value={settings.packSize}
+              onChange={(e) => update({ packSize: Number(e.target.value) })}
+              className="w-full accent-gold"
             />
-            <ul className="space-y-1">
-              {filteredPresets.map((p) => (
-                <li key={p.name} className="inset flex items-center justify-between px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => applyPreset(p)}
-                    className="truncate text-left font-bold hover:text-gold"
-                  >
-                    {p.name}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPresets(deletePreset(p.name))}
-                    className="pill bg-black/40 text-white/60 hover:text-red-300"
-                  >
-                    Delete
-                  </button>
-                </li>
-              ))}
-              {filteredPresets.length === 0 && (
-                <li className="text-xs text-white/40">No presets match.</li>
-              )}
-            </ul>
-          </>
-        )}
-      </div>
+            <button
+              type="button"
+              onClick={() => setPackOpen(false)}
+              className="btn w-full py-3 text-[0.6rem]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       <button
         type="button"
