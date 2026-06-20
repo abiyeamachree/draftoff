@@ -1,0 +1,60 @@
+{
+  "FC 26": {
+    "ucl": [
+      "Arsenal", "Aston Villa", "Liverpool", "Manchester City", "Newcastle United",
+      "Tottenham Hotspur", "Chelsea", "Real Madrid", "Barcelona", "Atletico Madrid",
+      "Athletic Bilbao", "Villarreal", "Inter", "Atalanta", "Juventus", "Napoli",
+      "Bayern Munich", "Bayer Leverkusen", "Borussia Dortmund", "Eintracht Frankfurt",
+      "Paris Saint-Germain", "Marseille", "Monaco", "Sporting CP", "Benfica",
+      "PSV Eindhoven", "Ajax", "Club Brugge", "Union Saint-Gilloise", "Galatasaray",
+      "Olympiacos", "Slavia Prague", "Bodo/Glimt", "Copenhagen", "Qarabag", "Pafos", "Kairat"
+    ],
+    "uel": [
+      "Manchester United", "Rangers", "Roma", "Lazio", "Fiorentina", "Real Betis",
+      "Braga", "Fenerbahce", "Lille", "Lyon", "Nice", "Midtjylland", "Freiburg",
+      "VfB Stuttgart", "Porto", "Feyenoord", "Celta Vigo", "Nottingham Forest"
+    ],
+    "uecl": [
+      "Crystal Palace", "Chelsea", "Fiorentina", "Rayo Vallecano", "Celje",
+      "Shamrock Rovers", "Heidenheim", "Aberdeen", "Breidablik", "Jagiellonia"
+    ]
+  },
+  "FC 25": {
+    "ucl": [
+      "Arsenal", "Aston Villa", "Liverpool", "Manchester City", "Newcastle United",
+      "Real Madrid", "Barcelona", "Atletico Madrid", "Girona", "Inter", "Bologna",
+      "Juventus", "AC Milan", "Bayern Munich", "Borussia Dortmund", "RB Leipzig",
+      "Paris Saint-Germain", "Monaco", "Brest", "Benfica", "Sporting CP", "PSV Eindhoven",
+      "Feyenoord", "Celtic", "Shakhtar Donetsk", "Red Star Belgrade", "Young Boys",
+      "Sparta Prague", "Brest", "Stuttgart", "Salzburg", "Girona"
+    ],
+    "uel": [
+      "Manchester United", "Tottenham Hotspur", "Chelsea", "Rangers", "Roma", "Lazio",
+      "Fiorentina", "Real Betis", "Braga", "Fenerbahce", "Lille", "Lyon", "Nice",
+      "Midtjylland", "Freiburg", "Porto", "Ajax", "Galatasaray", "PAOK", "Twente"
+    ],
+    "uecl": [
+      "Crystal Palace", "Heidenheim", "Aberdeen", "Celje", "Shamrock Rovers",
+      "Jagiellonia", "Lugano", "Heart of Midlothian", "Omonia", "Pafos"
+    ]
+  },
+  "FC 24": {
+    "ucl": [
+      "Arsenal", "Manchester City", "Manchester United", "Newcastle United",
+      "Real Madrid", "Barcelona", "Atletico Madrid", "Real Sociedad", "Sevilla",
+      "Inter", "AC Milan", "Napoli", "Lazio", "Bayern Munich", "Borussia Dortmund",
+      "RB Leipzig", "Union Berlin", "Paris Saint-Germain", "Lens", "Benfica", "Porto",
+      "Feyenoord", "Celtic", "Red Star Belgrade", "Salzburg", "Young Boys", "Antwerp",
+      "Shakhtar Donetsk", "Galatasaray", "Braga", "Copenhagen"
+    ],
+    "uel": [
+      "Liverpool", "Brighton", "West Ham United", "Aston Villa", "Roma", "Atalanta",
+      "Fiorentina", "Leverkusen", "Freiburg", "Marseille", "Toulouse", "Rennes",
+      "Sporting CP", "Ajax", "Sparta Prague", "Qarabag", "Servette", "TSC"
+    ],
+    "uecl": [
+      "Aston Villa", "Fiorentina", "Lille", "Club Brugge", "Dinamo Zagreb",
+      "PAOK", "Ferencvaros", "Legia Warsaw", "Zrinjski", "Lugano"
+    ]
+  }
+}

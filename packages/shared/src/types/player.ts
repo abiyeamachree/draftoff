@@ -38,6 +38,8 @@ export interface FootballPlayer {
   /** All eligible positions for this player. */
   positions: Position[];
   nation: string;
+  /** Formation slot on the manager's pitch (set when drafted). */
+  slotIndex?: number;
   /** Club at the time of this edition (may be empty for free agents). */
   team: string;
   league: string;
@@ -59,4 +61,14 @@ export interface PlayerPoolEntry {
   league: string;
   /** Server-authoritative: has this footballer already been drafted in the lobby? */
   available: boolean;
+  /** All eligible positions (when provided by server). */
+  positions?: Position[];
+  /** Formation slot indices this player can fill right now. */
+  eligibleSlots?: number[];
+  /** Can the active manager draft this player into an open slot? */
+  pickable?: boolean;
+  /** Peak card edition (highest overall across all FIFA versions). */
+  isPeak?: boolean;
+  /** Face stats for hover card / bars (when provided by server). */
+  summary?: PlayerSummaryStats;
 }

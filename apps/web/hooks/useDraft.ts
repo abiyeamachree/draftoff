@@ -12,18 +12,31 @@ import { useSocket } from "./useSocket";
 export function useDraft(code: string): {
   draft: DraftState | null;
   timeRemaining: number | null;
+  startCountdown: number | null;
 } {
   const { socket, connected } = useSocket();
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [startCountdown, setStartCountdown] = useState<number | null>(null);
 
   useEffect(() => {
     const onState = (state: DraftState) => {
       setDraft(state);
       setTimeRemaining(state.timeRemaining);
+      setStartCountdown(state.startCountdown ?? null);
     };
-    const onTick = ({ timeRemaining }: { timeRemaining: number }) =>
-      setTimeRemaining(timeRemaining);
+    const onTick = ({
+      timeRemaining: remaining,
+      startCountdown: countdown,
+    }: {
+      timeRemaining: number;
+      startCountdown?: number | null;
+    }) => {
+      setTimeRemaining(remaining);
+      if (countdown !== undefined) {
+        setStartCountdown(countdown);
+      }
+    };
 
     socket.on("draft:state", onState);
     socket.on("draft:tick", onTick);
@@ -38,5 +51,5 @@ export function useDraft(code: string): {
     };
   }, [socket, connected, code]);
 
-  return { draft, timeRemaining };
+  return { draft, timeRemaining, startCountdown };
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { formationRows } from "@draftoff/shared";
-
-type Pick = { name: string; overall: number };
+import type { CSSProperties } from "react";
+import type { IconKitColors } from "@draftoff/shared";
+import { formationRows, slotLineLabel } from "@draftoff/shared";
+import type { HoverPlayer } from "@/components/PlayerHoverCard";
+import { PlayerHoverCard } from "@/components/PlayerHoverCard";
 
 /** Percent positions on one half: GK by the goal (bottom), attack toward halfway (top). */
 function slotPositions(rowCounts: number[]): { x: number; y: number }[] {
@@ -25,26 +27,34 @@ export function PitchView({
   picks,
   header,
   compact = false,
+  teamSize = 11,
+  highlightSlots,
+  onSlotClick,
+  kitColors,
 }: {
   formation: string;
-  picks: Pick[];
+  picks: (HoverPlayer | null)[];
   header?: React.ReactNode;
   compact?: boolean;
+  teamSize?: number;
+  highlightSlots?: number[];
+  onSlotClick?: (slotIndex: number) => void;
+  kitColors?: IconKitColors;
 }) {
   const rowCounts = [1, ...formationRows(formation)];
   const positions = slotPositions(rowCounts);
-
-  let slotIndex = 0;
-  const slots: (Pick | null)[] = [];
-  for (const count of rowCounts) {
-    for (let i = 0; i < count; i++) {
-      slots.push(picks[slotIndex] ?? null);
-      slotIndex += 1;
-    }
-  }
+  const highlightSet = new Set(highlightSlots ?? []);
+  const interactive = Boolean(onSlotClick && highlightSlots && highlightSlots.length > 0);
+  const kitStyle = kitColors
+    ? ({
+        "--kit-primary": kitColors.primary,
+        "--kit-accent": kitColors.accent,
+        "--kit-text": kitColors.text,
+      } as CSSProperties)
+    : undefined;
 
   return (
-    <div className={`pitch ${compact ? "pitch-compact" : ""}`}>
+    <div className={`pitch ${compact ? "pitch-compact" : ""}`} style={kitStyle}>
       <div className="pitch-grass" />
       <div className="pitch-markings">
         <div className="pitch-halfway" />
@@ -58,27 +68,52 @@ export function PitchView({
 
       <div className="pitch-players">
         {positions.map((pos, i) => {
-          const pick = slots[i] ?? null;
+          const pick = picks[i] ?? null;
           const isGk = i === 0;
+          const highlighted = highlightSet.has(i);
+          const empty = !pick;
+          const clickable = interactive && empty && highlighted;
+
           return (
             <div
               key={i}
               className="pitch-player"
               style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             >
-              <div
-                className={`pitch-dot ${isGk ? "pitch-dot-gk" : pick ? "pitch-dot-filled" : "pitch-dot-empty"}`}
-              >
-                {pick ? (
-                  <span className="pitch-rating">{pick.overall}</span>
-                ) : (
-                  <span className="pitch-plus">+</span>
-                )}
-              </div>
-              {pick && (
-                <span className="pitch-name" title={pick.name}>
-                  {pick.name.split(" ").pop()}
-                </span>
+              {pick ? (
+                <PlayerHoverCard player={pick} align="center" placement="below">
+                  <div
+                    className={`pitch-marker pitch-marker-filled ${
+                      isGk ? "pitch-marker-gk" : ""
+                    }`}
+                  >
+                    <span className="pitch-marker-label">
+                      {pick.name.split(" ").pop()}
+                    </span>
+                  </div>
+                </PlayerHoverCard>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!clickable}
+                  onClick={() => clickable && onSlotClick?.(i)}
+                  className={`pitch-marker pitch-marker-empty ${
+                    highlighted ? "pitch-marker-highlight" : ""
+                  } ${clickable ? "pitch-marker-clickable" : ""}`}
+                  title={
+                    highlighted && empty
+                      ? `Place here (${slotLineLabel(i, formation, teamSize)})`
+                      : undefined
+                  }
+                >
+                  {highlighted ? (
+                    <span className="pitch-slot-label">
+                      {slotLineLabel(i, formation, teamSize)}
+                    </span>
+                  ) : (
+                    <span className="pitch-plus">+</span>
+                  )}
+                </button>
               )}
             </div>
           );

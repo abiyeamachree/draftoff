@@ -1,19 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { defaultFormation } from "@draftoff/shared";
+import { useCallback, useEffect, useState } from "react";
+import type { PlayerPoolEntry } from "@draftoff/shared";
+import { defaultFormation, eligibleSlots, getIconKitColors } from "@draftoff/shared";
 import { useLobby } from "@/hooks/useLobby";
 import { useDraft } from "@/hooks/useDraft";
+import { useSocket } from "@/hooks/useSocket";
 import { getUserId } from "@/lib/identity";
 import { PitchView } from "@/components/PitchView";
+import { PickPanel, squadPicksBySlot } from "@/components/PickPanel";
 import { RoomChatProvider, SpeechBubble, useRoomChat } from "@/components/RoomChat";
 
 function DraftContent({ code }: { code: string }) {
-  const { draft, timeRemaining } = useDraft(code);
+  const { socket } = useSocket();
+  const { draft, timeRemaining, startCountdown } = useDraft(code);
   const { lobby } = useLobby(code);
   const { bubbleFor } = useRoomChat();
 
   const [myUserId, setMyUserId] = useState("");
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerPoolEntry | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
+  const [viewOwnTeam, setViewOwnTeam] = useState(false);
+
   useEffect(() => setMyUserId(getUserId(code) ?? ""), [code]);
 
   const playerFor = (userId: string | null) =>
@@ -22,11 +31,89 @@ function DraftContent({ code }: { code: string }) {
     playerFor(userId)?.displayName ?? userId ?? "?";
 
   const teamSize = lobby?.settings.teamSize ?? 11;
-  const activeSquad = draft?.squads.find((s) => s.userId === draft.activeUserId) ?? null;
-  const activePlayer = playerFor(draft?.activeUserId ?? null);
-  const formation = activePlayer?.formation || defaultFormation(teamSize);
-  const picks = activeSquad?.players ?? [];
+  const activeUserId = draft?.activeUserId ?? null;
+  const mySquad = draft?.squads.find((s) => s.userId === myUserId) ?? null;
+  const activeSquad = draft?.squads.find((s) => s.userId === activeUserId) ?? null;
+  const displayUserId = viewOwnTeam ? myUserId : activeUserId;
+  const displaySquad =
+    draft?.squads.find((s) => s.userId === displayUserId) ?? activeSquad;
+  const displayPlayer = playerFor(displayUserId);
+  const myPlayer = playerFor(myUserId);
+  const pickFormation = myPlayer?.formation || defaultFormation(teamSize);
+  const displayFormation = displayPlayer?.formation || defaultFormation(teamSize);
+  const kitColors = getIconKitColors(displayPlayer?.icon);
+  const pitchPicks = squadPicksBySlot(displaySquad?.players ?? [], teamSize);
+  const occupiedSlots = new Set(
+    (mySquad?.players ?? [])
+      .map((p) => p.slotIndex)
+      .filter((s): s is number => typeof s === "number" && s >= 0)
+  );
   const squads = draft?.squads ?? [];
+  const countingDown = typeof startCountdown === "number" && startCountdown > 0;
+  const isMyTurn = Boolean(
+    draft?.activeUserId === myUserId && !draft?.complete && !countingDown
+  );
+  const timerPaused = Boolean(
+    draft?.turnOffer && !countingDown && !draft.complete && !draft.pickTimerActive
+  );
+  const viewingOwnTeam = viewOwnTeam;
+
+  const signalPickReady = useCallback(() => {
+    socket.emit(
+      "draft:pickReady",
+      { code, userId: getUserId(code) },
+      () => {}
+    );
+  }, [code, socket]);
+
+  const assignPick = useCallback(
+    (player: PlayerPoolEntry, slotIndex: number) => {
+      if (player.pickable === false || picking || !isMyTurn || !draft) return;
+
+      const allowed = eligibleSlots(
+        player.positions ?? [player.bestPosition],
+        pickFormation,
+        occupiedSlots,
+        teamSize
+      );
+      if (!allowed.includes(slotIndex)) {
+        setPickError("That position is not available for this player");
+        return;
+      }
+
+      setPickError(null);
+      setPicking(true);
+      socket.emit(
+        "draft:pick",
+        {
+          code,
+          userId: getUserId(code),
+          playerId: player.playerId,
+          edition: player.edition,
+          slotIndex,
+        },
+        (res) => {
+          setPicking(false);
+          if (!res.ok) {
+            setPickError(res.error);
+            return;
+          }
+          setSelectedPlayer(null);
+        }
+      );
+    },
+    [code, isMyTurn, picking, socket, pickFormation, teamSize, occupiedSlots, draft]
+  );
+
+  const turnKey = draft
+    ? `${draft.currentPickIndex}-${draft.activeUserId ?? ""}-${draft.turnOffer?.label ?? ""}`
+    : "";
+
+  useEffect(() => {
+    setSelectedPlayer(null);
+    setPickError(null);
+    setViewOwnTeam(draft?.activeUserId === myUserId);
+  }, [turnKey, draft?.activeUserId, myUserId]);
 
   return (
     <section className="relative mx-auto flex min-h-[85vh] max-w-5xl flex-col pb-20">
@@ -38,8 +125,16 @@ function DraftContent({ code }: { code: string }) {
             </>
           )}
         </h1>
-        <div className="inset title px-4 py-2 text-base text-gold">
-          {timeRemaining ?? "--"}s
+        <div
+          className={`inset title px-4 py-2 text-base ${
+            timerPaused ? "text-white/50" : "text-gold"
+          }`}
+        >
+          {countingDown
+            ? "Starting…"
+            : timerPaused
+              ? `${draft?.timeRemaining ?? "--"}s · waiting`
+              : `${timeRemaining ?? "--"}s`}
         </div>
       </header>
 
@@ -52,28 +147,42 @@ function DraftContent({ code }: { code: string }) {
             {draft.currentPickIndex + 1} of {draft.order.length}
           </p>
 
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setViewOwnTeam((v) => !v)}
+              className="btn btn-grey px-3 py-2 text-[0.55rem]"
+            >
+              {viewOwnTeam ? "View opponent" : "View my team"}
+            </button>
+          </div>
+
           <div className="relative mx-auto w-full max-w-2xl px-2 py-4">
-            {/* Managers around the pitch */}
+            {countingDown && (
+              <div className="draft-start-countdown" aria-live="polite">
+                <span className="draft-start-countdown-num">{startCountdown}</span>
+              </div>
+            )}
             <div className="relative aspect-[4/5] w-full">
               {squads.map((squad, i) => {
                 const angle = (i / Math.max(1, squads.length)) * 2 * Math.PI - Math.PI / 2;
-                const left = 50 + 46 * Math.cos(angle);
-                const top = 50 + 46 * Math.sin(angle);
-                const isActive = squad.userId === draft.activeUserId;
+                const left = 50 + 48 * Math.cos(angle);
+                const top = 50 + 48 * Math.sin(angle);
+                const isActive = squad.userId === activeUserId;
                 const p = playerFor(squad.userId);
                 return (
                   <div
                     key={squad.userId}
-                    className="absolute z-20 flex w-[4.5rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center"
+                    className="absolute z-20 flex w-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center"
                     style={{ left: `${left}%`, top: `${top}%` }}
                   >
                     <div className="relative">
                       <SpeechBubble
                         text={bubbleFor(squad.userId)}
-                        className="bottom-full left-1/2 mb-1 -translate-x-1/2"
+                        className="bottom-full left-1/2 mb-2 -translate-x-1/2"
                       />
                       <div
-                        className={`flex h-11 w-11 items-center justify-center rounded-full border-2 border-black bg-black/50 text-2xl shadow-lg ${
+                        className={`flex h-16 w-16 items-center justify-center rounded-full border-[3px] border-black bg-black/50 text-4xl shadow-lg ${
                           isActive ? "ring-2 ring-gold ring-offset-2 ring-offset-transparent" : ""
                         }`}
                       >
@@ -81,33 +190,53 @@ function DraftContent({ code }: { code: string }) {
                       </div>
                     </div>
                     <span
-                      className={`mt-1 max-w-full truncate text-[0.55rem] font-bold ${
+                      className={`mt-1.5 max-w-full truncate text-[0.65rem] font-bold ${
                         isActive ? "text-gold" : "text-white/80"
                       }`}
                       style={{ textShadow: "1px 1px 0 #000" }}
                     >
                       {nameFor(squad.userId)}
                     </span>
-                    <span className="text-[0.5rem] text-white/50">
+                    <span className="text-[0.55rem] text-white/50">
                       {squad.players.length}/{draft.totalRounds}
                     </span>
                   </div>
                 );
               })}
 
-              {/* Centre pitch */}
-              <div className="absolute left-1/2 top-1/2 z-10 w-[62%] -translate-x-1/2 -translate-y-1/2">
+              <div className="absolute left-1/2 top-1/2 z-10 w-[58%] -translate-x-1/2 -translate-y-1/2">
                 <PitchView
-                  formation={formation}
-                  picks={picks}
+                  formation={displayFormation}
+                  picks={pitchPicks}
+                  teamSize={teamSize}
+                  kitColors={kitColors}
                   compact
+                  highlightSlots={
+                    isMyTurn && viewingOwnTeam && selectedPlayer
+                      ? eligibleSlots(
+                          selectedPlayer.positions ?? [selectedPlayer.bestPosition],
+                          pickFormation,
+                          occupiedSlots,
+                          teamSize
+                        )
+                      : undefined
+                  }
+                  onSlotClick={
+                    isMyTurn && viewingOwnTeam && selectedPlayer
+                      ? (slot) => assignPick(selectedPlayer, slot)
+                      : undefined
+                  }
                   header={
                     <>
-                      <span className="text-lg leading-none">{activePlayer?.icon ?? "⚽"}</span>
+                      <span className="text-lg leading-none">{displayPlayer?.icon ?? "⚽"}</span>
                       <span className="truncate text-[0.55rem] font-extrabold text-gold">
-                        {draft.complete ? "Draft complete" : nameFor(draft.activeUserId)}
+                        {draft.complete
+                          ? "Draft complete"
+                          : viewingOwnTeam
+                            ? "My team"
+                            : nameFor(activeUserId)}
                       </span>
-                      <span className="text-[0.5rem] text-white/60">{formation}</span>
+                      <span className="text-[0.5rem] text-white/60">{displayFormation}</span>
                     </>
                   }
                 />
@@ -115,8 +244,30 @@ function DraftContent({ code }: { code: string }) {
             </div>
           </div>
 
-          {draft.activeUserId === myUserId && !draft.complete && (
-            <p className="text-center text-lg text-emerald-300">Your pick!</p>
+          {isMyTurn && <p className="text-center text-lg text-emerald-300">Your pick!</p>}
+
+          {pickError && (
+            <p className="text-center text-sm font-bold text-red-300">{pickError}</p>
+          )}
+
+          {!countingDown && (
+            <PickPanel
+              code={code}
+              offer={draft.turnOffer}
+              turnKey={turnKey}
+              isMyTurn={isMyTurn}
+              hideRatings={lobby?.settings.hideRatings ?? false}
+              formation={pickFormation}
+              teamSize={teamSize}
+              occupiedSlots={occupiedSlots}
+              selectedPlayer={selectedPlayer}
+              picking={picking}
+              onSelectPlayer={setSelectedPlayer}
+              onAssignSlot={assignPick}
+              onPickReady={signalPickReady}
+              rerollsRemaining={draft.rerollsRemaining}
+              rerollsPerPick={lobby?.settings.rerollsPerPick ?? 0}
+            />
           )}
         </div>
       )}

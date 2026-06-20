@@ -1,2 +1,3 @@
 [console_scripts]
+draftoff-seed = draftoff.seed:main
 draftoff-server = draftoff.__main__:main

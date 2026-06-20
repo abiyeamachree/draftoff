@@ -1,5 +1,6 @@
 # Python scraper data 
 __pycache__/
+apps/server/data/
 sofifa_data/
 sofifa_all_players.csv
 

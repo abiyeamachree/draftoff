@@ -1,12 +1,31 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { TOURNAMENT_LABELS } from "@draftoff/shared";
+import { useEffect, useMemo, useState } from "react";
+import { TOURNAMENT_LABELS, type LobbySummary } from "@draftoff/shared";
 import { useLobbyList } from "@/hooks/useLobbyList";
 import { useSocket } from "@/hooks/useSocket";
 import { getName, setName, setUserId } from "@/lib/identity";
 import { sanitiseName } from "@/lib/name";
+
+function lobbyMeta(l: LobbySummary) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate font-extrabold">{l.name || `${l.hostName}'s draft`}</p>
+      <p className="text-xs font-medium text-white/50">
+        {l.playerCount}/{l.numTeams} teams · {l.teamSize}-a-side ·{" "}
+        {TOURNAMENT_LABELS[l.tournamentType]}
+      </p>
+    </div>
+  );
+}
+
+function closedStatusLabel(status: LobbySummary["status"]) {
+  if (status === "DRAFTING") return "Drafting";
+  if (status === "SIMULATING") return "In play";
+  if (status === "FINISHED") return "Finished";
+  return status;
+}
 
 export function HomeScreen() {
   const router = useRouter();
@@ -17,6 +36,16 @@ export function HomeScreen() {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [closedOpen, setClosedOpen] = useState(false);
+
+  const openLobbies = useMemo(
+    () => lobbies.filter((l) => l.status === "LOBBY"),
+    [lobbies]
+  );
+  const closedLobbies = useMemo(
+    () => lobbies.filter((l) => l.status !== "LOBBY"),
+    [lobbies]
+  );
 
   useEffect(() => setDisplayName(sanitiseName(getName())), []);
 
@@ -51,8 +80,7 @@ export function HomeScreen() {
   return (
     <div className="space-y-8">
       <header className="text-center">
-        <h1 className="title text-3xl text-gold sm:text-4xl">DRAFTOFF</h1>
-        <p className="mt-4 text-xl text-white/80">
+        <p className="text-xl text-white/80">
           Pick 11 players and simulate a tournament with friends!
         </p>
       </header>
@@ -115,59 +143,66 @@ export function HomeScreen() {
         <section className="panel space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="title text-sm">Open lobbies</h2>
-            <span className="pill bg-black/40 text-white/60">{lobbies.length} live</span>
+            <span className="pill bg-black/40 text-white/60">
+              {openLobbies.length} live
+            </span>
           </div>
 
-          {lobbies.length === 0 ? (
+          {openLobbies.length === 0 ? (
             <p className="py-10 text-center font-bold text-white/40">
-              No lobbies yet. Create the first one!
+              No open lobbies. Create the first one!
             </p>
           ) : (
             <ul className="space-y-2">
-              {lobbies.map((l) => {
-                const meta = (
-                  <div className="min-w-0">
-                    <p className="truncate font-extrabold">
-                      {l.name || `${l.hostName}'s draft`}
-                    </p>
-                    <p className="text-xs font-medium text-white/50">
-                      {l.playerCount}/{l.numTeams} teams · {l.teamSize}-a-side ·{" "}
-                      {TOURNAMENT_LABELS[l.tournamentType]}
-                    </p>
-                  </div>
-                );
+              {openLobbies.map((l) => (
+                <li key={l.code}>
+                  <button
+                    type="button"
+                    onClick={() => join(l.code)}
+                    disabled={!nameReady || busy || l.playerCount >= l.maxPlayers}
+                    className="inset group flex w-full items-center justify-between px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-gold hover:bg-black/55 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-black"
+                  >
+                    {lobbyMeta(l)}
+                    <span className="title shrink-0 text-[0.55rem] text-gold opacity-60 transition group-hover:opacity-100">
+                      Join ›
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
-                if (l.status !== "LOBBY") {
-                  return (
+          {closedLobbies.length > 0 && (
+            <div className="border-t border-white/10 pt-3">
+              <button
+                type="button"
+                onClick={() => setClosedOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <span className="text-sm font-bold uppercase tracking-wide text-white/50">
+                  Closed lobbies
+                </span>
+                <span className="flex items-center gap-2 text-xs text-white/40">
+                  {closedLobbies.length}
+                  <span className="text-gold">{closedOpen ? "▾" : "▸"}</span>
+                </span>
+              </button>
+              {closedOpen && (
+                <ul className="mt-2 space-y-2">
+                  {closedLobbies.map((l) => (
                     <li
                       key={l.code}
                       className="inset flex items-center justify-between px-4 py-3 opacity-70"
                     >
-                      {meta}
+                      {lobbyMeta(l)}
                       <span className="pill bg-black/40 text-white/60">
-                        {l.status === "DRAFTING" ? "Drafting" : "In play"}
+                        {closedStatusLabel(l.status)}
                       </span>
                     </li>
-                  );
-                }
-
-                return (
-                  <li key={l.code}>
-                    <button
-                      type="button"
-                      onClick={() => join(l.code)}
-                      disabled={!nameReady || busy || l.playerCount >= l.maxPlayers}
-                      className="inset group flex w-full items-center justify-between px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-gold hover:bg-black/55 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-black"
-                    >
-                      {meta}
-                      <span className="title shrink-0 text-[0.55rem] text-gold opacity-60 transition group-hover:opacity-100">
-                        Join ›
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </section>
       </div>

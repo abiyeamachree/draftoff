@@ -22,6 +22,7 @@ export function useLobby(code: string): { lobby: LobbyState | null } {
 
     return () => {
       socket.off("lobby:state", setLobby);
+      socket.emit("lobby:leave", { code, userId: getUserId(code) }, () => {});
     };
   }, [socket, connected, code]);
 

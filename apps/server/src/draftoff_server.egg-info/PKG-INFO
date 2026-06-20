@@ -5,4 +5,5 @@ Summary: DraftOff realtime backend (FastAPI + python-socketio)
 Requires-Python: >=3.11
 Requires-Dist: fastapi>=0.110
 Requires-Dist: python-socketio>=5.11
+Requires-Dist: sqlalchemy>=2.0
 Requires-Dist: uvicorn[standard]>=0.29

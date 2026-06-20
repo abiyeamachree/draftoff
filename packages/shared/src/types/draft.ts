@@ -1,4 +1,24 @@
-import type { FootballPlayer } from "./player.js";
+import type { FootballPlayer, PlayerPoolEntry } from "./player.js";
+import type { PickCycleMode } from "./lobby.js";
+
+/** Max players returned per pick offer (one page). */
+export const OFFER_PLAYER_LIMIT = 20;
+
+/** Server-rolled context for the active picker's current turn. */
+export interface DraftTurnOffer {
+  cycleMode: PickCycleMode;
+  edition: string;
+  season: string;
+  team?: string;
+  league?: string;
+  nation?: string;
+  position?: string;
+  /** Human-readable roll e.g. "Arsenal · 25/26". */
+  label: string;
+  /** Eligible names for the dice reel (teams, leagues, etc. for cycleMode). */
+  rollPool: string[];
+  options: PlayerPoolEntry[];
+}
 
 /** A single completed pick in the draft log (append-only). */
 export interface DraftPick {
@@ -10,6 +30,8 @@ export interface DraftPick {
   player: FootballPlayer;
   /** Was this pick auto-made by the server on timer expiry? */
   auto: boolean;
+  /** Formation slot this player was placed in. */
+  slotIndex?: number;
 }
 
 /** A drafted squad belonging to one user. */
@@ -38,4 +60,12 @@ export interface DraftState {
   picks: DraftPick[];
   squads: Squad[];
   complete: boolean;
+  /** Rolled team/year (etc.) + player options for the active picker. */
+  turnOffer: DraftTurnOffer | null;
+  /** Pre-draft 3-2-1 countdown; null once the first pick is live. */
+  startCountdown: number | null;
+  /** Re-rolls left on the active turn. */
+  rerollsRemaining: number;
+  /** False until the active picker can select (reveal done); timer paused until then. */
+  pickTimerActive: boolean;
 }

@@ -50,6 +50,7 @@ ALLOWED_DRAFT_TYPES = {"snake", "linear", "pack"}
 LEAGUE_FORMATS = {"round_robin", "double_round_robin"}
 ALLOWED_VISIBILITY = {"public", "private"}
 ALLOWED_POOL_LOGIC = {"OR", "AND"}
+ALLOWED_PICK_CYCLE = {"team", "league", "nation", "position"}
 POOL_KEYS = ("leagues", "seasons", "nations", "clubs")
 CAP_KEYS = ("maxPerClub", "maxPerNation", "maxPerLeague")
 BOOL_KEYS = (
@@ -62,6 +63,8 @@ BOOL_KEYS = (
 
 MIN_TIMER = 5
 MAX_TIMER = 30
+MIN_REROLLS = 0
+MAX_REROLLS = 5
 MIN_TEAMS = 2
 MAX_TEAMS_LEAGUE = 24
 MAX_TEAMS_TOURNAMENT = 64
@@ -101,10 +104,10 @@ DEFAULT_SETTINGS: dict = {
     "teamSize": 11,
     "tournamentType": "knockout",
     "draftType": "snake",
-    "draftTimerSeconds": 30,
+    "draftTimerSeconds": 15,
     "packSize": 5,
     "visibility": "public",
-    "peakCardsEnabled": True,
+    "peakCardsEnabled": False,
     "maxPerClub": 0,
     "maxPerNation": 0,
     "maxPerLeague": 0,
@@ -112,6 +115,8 @@ DEFAULT_SETTINGS: dict = {
     "chatEnabled": True,
     "draftBoardEnabled": True,
     "fillWithBots": False,
+    "pickCycleMode": "team",
+    "rerollsPerPick": 1,
 }
 
 # Unambiguous alphabet for join codes (no O/0/I/1).
@@ -170,6 +175,10 @@ def parse_settings(raw: dict | None) -> dict:
     if isinstance(timer, int) and MIN_TIMER <= timer <= MAX_TIMER:
         settings["draftTimerSeconds"] = timer
 
+    rerolls = raw.get("rerollsPerPick")
+    if isinstance(rerolls, int) and MIN_REROLLS <= rerolls <= MAX_REROLLS:
+        settings["rerollsPerPick"] = rerolls
+
     tournament = raw.get("tournamentType")
     if tournament in ALLOWED_TOURNAMENTS:
         settings["tournamentType"] = tournament
@@ -177,6 +186,10 @@ def parse_settings(raw: dict | None) -> dict:
     draft_type = raw.get("draftType")
     if draft_type in ALLOWED_DRAFT_TYPES:
         settings["draftType"] = draft_type
+
+    cycle = raw.get("pickCycleMode")
+    if cycle in ALLOWED_PICK_CYCLE:
+        settings["pickCycleMode"] = cycle
 
     visibility = raw.get("visibility")
     if visibility in ALLOWED_VISIBILITY:

@@ -38,8 +38,10 @@ export interface JoinLobbyPayload {
 
 export interface DraftPickPayload {
   code: string;
+  userId?: string;
   playerId: number;
   edition: string;
+  slotIndex: number;
 }
 
 export interface SearchPayload {
@@ -80,6 +82,11 @@ export interface ClientToServerEvents {
     payload: SyncPayload,
     ack: (res: Ack<LobbyState>) => void
   ) => void;
+  /** Leave a lobby room (navigation away / tab close handled separately). */
+  "lobby:leave": (
+    payload: { code: string; userId?: string },
+    ack: (res: Ack<null>) => void
+  ) => void;
   /** Re-subscribe a socket to a draft room and fetch current state. */
   "draft:sync": (
     payload: SyncPayload,
@@ -117,6 +124,16 @@ export interface ClientToServerEvents {
     payload: DraftPickPayload,
     ack: (res: Ack<null>) => void
   ) => void;
+  /** Re-roll the dice for the active turn (team/year/etc.). */
+  "draft:cycle": (
+    payload: { code: string; userId?: string },
+    ack: (res: Ack<null>) => void
+  ) => void;
+  /** Active picker signals their option list is ready; starts the pick timer. */
+  "draft:pickReady": (
+    payload: { code: string; userId?: string },
+    ack: (res: Ack<null>) => void
+  ) => void;
   "draft:search": (
     payload: SearchPayload,
     ack: (res: Ack<PlayerPoolEntry[]>) => void
@@ -141,8 +158,11 @@ export interface ServerToClientEvents {
     edition: string;
     auto: boolean;
   }) => void;
-  /** Per-second timer tick for the active turn. */
-  "draft:tick": (payload: { timeRemaining: number }) => void;
+  /** Per-second timer tick for the active turn (or pre-draft countdown). */
+  "draft:tick": (payload: {
+    timeRemaining: number;
+    startCountdown?: number | null;
+  }) => void;
   "sim:matchResult": (result: MatchResult) => void;
   "tournament:state": (state: TournamentState) => void;
   /** A quick-chat message broadcast to everyone in the room. */

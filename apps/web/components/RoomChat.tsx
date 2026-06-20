@@ -14,6 +14,11 @@ import { QUICK_CHAT_EMOJIS, QUICK_CHAT_PHRASES } from "@draftoff/shared";
 import { useChat } from "@/hooks/useChat";
 
 const BUBBLE_TTL_MS = 4500;
+/** How long each line stays in the overlay feed. */
+const MESSAGE_VISIBLE_MS = 7000;
+/** After this long with no new messages, the feed fades out entirely. */
+const FEED_IDLE_MS = 10000;
+const FEED_FADE_MS = 2500;
 const CHAT_COLORS = [
   "#5cff5c",
   "#5cb8ff",
@@ -60,18 +65,41 @@ function ChatFeed({
   messages: ChatMessage[];
   nameColor: (userId: string) => string;
 }) {
-  const visible = messages.slice(-8);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 300);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const lastAt = messages.reduce((max, m) => Math.max(max, m.at), 0);
+  const idleMs = lastAt ? now - lastAt : Infinity;
+
+  const visible = messages.filter((m) => now - m.at < MESSAGE_VISIBLE_MS).slice(-6);
+
+  if (visible.length === 0 || idleMs >= FEED_IDLE_MS) return null;
+
+  const fadeStart = FEED_IDLE_MS - FEED_FADE_MS;
+  const feedOpacity =
+    idleMs <= fadeStart ? 1 : Math.max(0, 1 - (idleMs - fadeStart) / FEED_FADE_MS);
 
   return (
-    <div className="chat-feed pointer-events-none absolute left-3 top-3 z-30 max-w-[min(20rem,42vw)] space-y-0.5">
-      {visible.map((m) => (
-        <p key={m.id} className="chat-line leading-snug">
-          <span className="font-bold" style={{ color: nameColor(m.userId) }}>
-            {m.name}:
-          </span>{" "}
-          <span className="text-white">{m.text}</span>
-        </p>
-      ))}
+    <div
+      className="chat-feed pointer-events-none fixed left-4 top-[9rem] z-30 max-w-[min(20rem,42vw)] space-y-0.5 transition-opacity duration-300"
+      style={{ opacity: feedOpacity }}
+    >
+      {visible.map((m) => {
+        const age = now - m.at;
+        const lineOpacity = Math.max(0.15, 1 - age / MESSAGE_VISIBLE_MS);
+        return (
+          <p key={m.id} className="chat-line leading-snug" style={{ opacity: lineOpacity }}>
+            <span className="font-bold" style={{ color: nameColor(m.userId) }}>
+              {m.name}:
+            </span>{" "}
+            <span className="text-white">{m.text}</span>
+          </p>
+        );
+      })}
     </div>
   );
 }

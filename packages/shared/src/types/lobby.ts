@@ -72,7 +72,23 @@ export interface LobbySettings {
   chatEnabled: boolean;
   draftBoardEnabled: boolean;
   fillWithBots: boolean;
+  /**
+   * What the dice rolls each turn before showing pick options.
+   * team = random club+year, league/nation/position = random bucket in that year.
+   */
+  pickCycleMode: PickCycleMode;
+  /** Re-rolls allowed per pick (0–5). */
+  rerollsPerPick: number;
 }
+
+export type PickCycleMode = "team" | "league" | "nation" | "position";
+
+export const PICK_CYCLE_LABELS: Record<PickCycleMode, string> = {
+  team: "Team + year",
+  league: "League + year",
+  nation: "Nation + year",
+  position: "Position + year",
+};
 
 export function emptyPoolFilter(): PoolFilter {
   return { leagues: [], seasons: [], nations: [], clubs: [] };
@@ -88,6 +104,8 @@ export function emptyPoolRules(): PoolRules {
 
 export const MAX_PLAYERS_PER_LOBBY = 20;
 export const MIN_PLAYERS_PER_LOBBY = 2;
+export const MIN_REROLLS_PER_PICK = 0;
+export const MAX_REROLLS_PER_PICK = 5;
 
 export const DEFAULT_LOBBY_SETTINGS: LobbySettings = {
   name: "",
@@ -96,11 +114,11 @@ export const DEFAULT_LOBBY_SETTINGS: LobbySettings = {
   teamSize: 11,
   tournamentType: "knockout",
   draftType: "snake",
-  draftTimerSeconds: 30,
+  draftTimerSeconds: 15,
   packSize: 5,
   visibility: "public",
   pool: emptyPoolRules(),
-  peakCardsEnabled: true,
+  peakCardsEnabled: false,
   maxPerClub: 0,
   maxPerNation: 0,
   maxPerLeague: 0,
@@ -108,6 +126,8 @@ export const DEFAULT_LOBBY_SETTINGS: LobbySettings = {
   chatEnabled: true,
   draftBoardEnabled: true,
   fillWithBots: false,
+  pickCycleMode: "team",
+  rerollsPerPick: 1,
 };
 
 function flattenFilter(filter: PoolFilter): string[] {

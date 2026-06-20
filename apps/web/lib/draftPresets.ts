@@ -2,6 +2,7 @@
 
 import { emptyPoolFilter, emptyPoolRules } from "@draftoff/shared";
 import type { LobbySettings, PoolFilter } from "@draftoff/shared";
+import { UCL_2526_CLUBS, WC_2026_NATIONS } from "@/lib/competitionTeams";
 
 export type PoolKey = keyof PoolFilter;
 
@@ -253,45 +254,8 @@ export function teamsBySeason(teams: string[]): Record<string, string[]> {
   return out;
 }
 
-/** Champions League 25/26 league-phase clubs (curated placeholder). */
-export const UCL_2526 = [
-  "Real Madrid",
-  "Barcelona",
-  "Atletico Madrid",
-  "Athletic Bilbao",
-  "Villarreal",
-  "Liverpool",
-  "Arsenal",
-  "Manchester City",
-  "Newcastle United",
-  "Tottenham Hotspur",
-  "Chelsea",
-  "Inter",
-  "Atalanta",
-  "Juventus",
-  "Napoli",
-  "Bayern Munich",
-  "Bayer Leverkusen",
-  "Borussia Dortmund",
-  "Eintracht Frankfurt",
-  "Paris Saint-Germain",
-  "Marseille",
-  "Monaco",
-  "Sporting CP",
-  "Benfica",
-  "PSV Eindhoven",
-  "Ajax",
-  "Club Brugge",
-  "Union Saint-Gilloise",
-  "Galatasaray",
-  "Olympiacos",
-  "Slavia Prague",
-  "Bodo/Glimt",
-  "Copenhagen",
-  "Qarabag",
-  "Pafos",
-  "Kairat",
-];
+/** @deprecated use competitionTeams.ts */
+export { WC_2026_NATIONS, UCL_2526_CLUBS } from "@/lib/competitionTeams";
 
 function leagueTeams2526(league: string, count: number): string[] {
   return (CLUBS_2526[league] ?? []).slice(0, count).map((c) => teamLabel(c, "25/26"));
@@ -331,10 +295,15 @@ export const BUILT_IN_PRESETS: Preset[] = [
       numTeams: 20,
       tournamentType: "round_robin",
       teamSize: 11,
+      pickCycleMode: "team",
       teams: leagueTeams2526("Premier League", 20),
       pool: {
         ...emptyPoolRules(),
-        include: { ...emptyPoolFilter(), leagues: ["Premier League"] },
+        include: {
+          ...emptyPoolFilter(),
+          leagues: ["Premier League"],
+          seasons: ["25/26"],
+        },
       },
     },
   },
@@ -347,6 +316,7 @@ export const BUILT_IN_PRESETS: Preset[] = [
       numTeams: 20,
       tournamentType: "round_robin",
       teamSize: 11,
+      pickCycleMode: "team",
       teams: [
         ...leagueTeams2526("Premier League", 5),
         ...leagueTeams2526("Championship", 5),
@@ -358,6 +328,7 @@ export const BUILT_IN_PRESETS: Preset[] = [
         include: {
           ...emptyPoolFilter(),
           leagues: ["Premier League", "Championship", "League One", "League Two"],
+          seasons: ["25/26"],
         },
       },
     },
@@ -368,42 +339,34 @@ export const BUILT_IN_PRESETS: Preset[] = [
     description: "Every 25/26 Champions League club in a knockout.",
     config: {
       name: "Champions League",
-      numTeams: UCL_2526.length,
+      numTeams: UCL_2526_CLUBS.length,
       tournamentType: "knockout",
       teamSize: 11,
-      teams: UCL_2526.map((c) => teamLabel(c, "25/26")),
+      pickCycleMode: "team",
+      teams: UCL_2526_CLUBS.map((c) => teamLabel(c, "25/26")),
       pool: {
         ...emptyPoolRules(),
-        include: { ...emptyPoolFilter(), clubs: UCL_2526 },
+        include: { ...emptyPoolFilter(), clubs: [...UCL_2526_CLUBS], seasons: ["25/26"] },
       },
     },
   },
   {
     name: "World Cup 26",
     emblem: "globe",
-    description: "48 nations, groups into a knockout.",
+    description: "48 nations — roll a country each pick, then draft from its squad.",
     config: {
       name: "World Cup 26",
       numTeams: 48,
       tournamentType: "groups_knockout",
       teamSize: 11,
+      pickCycleMode: "nation",
       teams: [],
       pool: {
         ...emptyPoolRules(),
         include: {
           ...emptyPoolFilter(),
-          nations: [
-            "England",
-            "France",
-            "Brazil",
-            "Argentina",
-            "Spain",
-            "Germany",
-            "Portugal",
-            "USA",
-            "Mexico",
-            "Canada",
-          ],
+          nations: [...WC_2026_NATIONS],
+          seasons: ["25/26"],
         },
       },
     },
@@ -411,12 +374,13 @@ export const BUILT_IN_PRESETS: Preset[] = [
   {
     name: "Rest of the world",
     emblem: "world",
-    description: "Knockout of clubs and nations outside Europe.",
+    description: "Knockout draft from MLS, Saudi Pro League, and the Americas.",
     config: {
       name: "Rest of the World",
       numTeams: 16,
       tournamentType: "knockout",
       teamSize: 11,
+      pickCycleMode: "team",
       teams: [],
       pool: {
         ...emptyPoolRules(),
@@ -424,6 +388,7 @@ export const BUILT_IN_PRESETS: Preset[] = [
           ...emptyPoolFilter(),
           leagues: ["Saudi Pro League", "MLS"],
           nations: ["Brazil", "Argentina", "USA", "Mexico", "Canada"],
+          seasons: ["25/26"],
         },
       },
     },

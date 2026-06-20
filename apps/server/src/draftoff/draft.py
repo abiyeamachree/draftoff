@@ -32,4 +32,8 @@ def build_draft_state(players: list[dict], settings: dict) -> dict:
             {"userId": uid, "players": [], "teamRating": None} for uid in user_ids
         ],
         "complete": False,
+        "turnOffer": None,
+        "startCountdown": None,
+        "rerollsRemaining": 0,
+        "pickTimerActive": False,
     }

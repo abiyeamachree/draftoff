@@ -10,11 +10,13 @@ requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.110",
   "python-socketio>=5.11",
+  "sqlalchemy>=2.0",
   "uvicorn[standard]>=0.29",
 ]
 
 [project.scripts]
 draftoff-server = "draftoff.__main__:main"
+draftoff-seed = "draftoff.seed:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

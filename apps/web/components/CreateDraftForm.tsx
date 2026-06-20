@@ -13,6 +13,10 @@ import {
   type LobbySettings,
   maxTeamsForFormat,
   MIN_TEAMS,
+  MAX_REROLLS_PER_PICK,
+  MIN_REROLLS_PER_PICK,
+  PICK_CYCLE_LABELS,
+  type PickCycleMode,
   type PoolRules,
   type TeamSize,
   TOURNAMENT_LABELS,
@@ -38,6 +42,7 @@ const FORMATS: TournamentType[] = [
   "best_of",
 ];
 const DRAFT_TYPES: DraftType[] = ["snake", "linear", "pack"];
+const PICK_CYCLES: PickCycleMode[] = ["team", "league", "nation", "position"];
 
 type BoolKey =
   | "peakCardsEnabled"
@@ -373,6 +378,27 @@ export function CreateDraftForm() {
         {advancedOpen && (
           <div className="space-y-4">
             <div>
+              {fieldLabel("Pick cycle")}
+              <p className="mt-1 text-xs text-white/50">
+                What the dice rolls each turn before you choose a player.
+              </p>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {PICK_CYCLES.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => update({ pickCycleMode: mode })}
+                    className={`btn px-2 text-[0.5rem] ${
+                      settings.pickCycleMode === mode ? "" : "btn-grey"
+                    }`}
+                  >
+                    {PICK_CYCLE_LABELS[mode]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               {fieldLabel("Draft type")}
               <div className="mt-1 flex gap-2">
                 {DRAFT_TYPES.map((t) => (
@@ -414,6 +440,27 @@ export function CreateDraftForm() {
                 }
                 className="mt-2 w-full accent-gold"
               />
+            </label>
+
+            <label className="block">
+              {fieldLabel("Re-rolls per pick")}{" "}
+              <span className="font-mono text-gold">{settings.rerollsPerPick}</span>
+              <input
+                type="range"
+                min={MIN_REROLLS_PER_PICK}
+                max={MAX_REROLLS_PER_PICK}
+                step={1}
+                value={settings.rerollsPerPick}
+                onChange={(e) =>
+                  update({ rerollsPerPick: Number(e.target.value) })
+                }
+                className="mt-2 w-full accent-gold"
+              />
+              <p className="mt-1 text-xs text-white/50">
+                {settings.rerollsPerPick === 0
+                  ? "Re-rolls disabled — no second chance on a bad roll."
+                  : `${settings.rerollsPerPick} re-roll${settings.rerollsPerPick === 1 ? "" : "s"} allowed each pick.`}
+              </p>
             </label>
 
             {CAPS.map((cap) => (

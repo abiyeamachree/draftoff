@@ -196,7 +196,9 @@ function LobbyContent({ code }: { code: string }) {
             <span className="text-xs font-bold uppercase tracking-wide text-white/40">
               {lobby.settings.teamSize}-a-side ·{" "}
               {TOURNAMENT_LABELS[lobby.settings.tournamentType]} ·{" "}
-              {lobby.settings.draftTimerSeconds}s
+              {lobby.settings.draftTimerSeconds}s ·{" "}
+              {lobby.settings.rerollsPerPick} re-roll
+              {lobby.settings.rerollsPerPick === 1 ? "" : "s"}/pick
             </span>
           </div>
           <ul className="space-y-2">
@@ -210,7 +212,7 @@ function LobbyContent({ code }: { code: string }) {
                   className="bottom-full left-8 mb-1"
                 />
                 <span className="flex items-center gap-2 font-extrabold">
-                  <span className="relative text-lg leading-none">{p.icon}</span>
+                  <span className="relative text-2xl leading-none">{p.icon}</span>
                   {p.displayName}
                   {p.userId === myUserId && (
                     <span className="text-xs text-white/40">(you)</span>
