@@ -27,3 +27,8 @@ export function setUserId(code: string, userId: string): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(`draftoff:user:${code}`, userId);
 }
+
+export function clearUserId(code: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(`draftoff:user:${code}`);
+}

@@ -56,10 +56,12 @@ function scrollToCenter(
 }
 
 function rollWinnerLabel(offer: DraftTurnOffer): string {
+  if (offer.cycleMode === "nation" || offer.nation) {
+    return offer.label.split(" · ")[0] || offer.nation || offer.label;
+  }
   return (
     offer.team ||
     offer.league ||
-    offer.nation ||
     offer.position ||
     offer.label.split(" · ")[0] ||
     offer.label
@@ -187,7 +189,7 @@ export function PickPanel({
       cancelled = true;
       window.clearTimeout(rollDone);
     };
-  }, [turnKey, offer]);
+  }, [turnKey]);
 
   useLayoutEffect(() => {
     if (!stripReady || strip.length === 0 || phase !== "rolling") return;
@@ -235,16 +237,30 @@ export function PickPanel({
     return () => window.clearTimeout(t);
   }, [phase, revealedCount, offer]);
 
-  const pickableAt = offer ? Math.min(OFFER_PLAYER_LIMIT, offer.options.length) : 0;
+  const firstPageCount = offer
+    ? Math.min(OFFER_PLAYER_LIMIT, offer.options.length)
+    : 0;
   const isPickable =
-    Boolean(offer) && phase !== "rolling" && revealedCount >= pickableAt;
+    Boolean(offer) &&
+    firstPageCount > 0 &&
+    phase !== "rolling" &&
+    revealedCount >= firstPageCount;
 
   useEffect(() => {
-    if (!isMyTurn || !isPickable || !onPickReady) return;
+    if (!isMyTurn || !onPickReady || !offer) return;
+    if (phase !== "ready" || firstPageCount === 0) return;
     if (pickReadySentRef.current === turnKey) return;
-    pickReadySentRef.current = turnKey;
-    onPickReady();
-  }, [isMyTurn, isPickable, onPickReady, turnKey]);
+
+    const lastPopMs = (firstPageCount - 1) * 20 + 280 + 40;
+
+    const t = window.setTimeout(() => {
+      if (pickReadySentRef.current === turnKey) return;
+      pickReadySentRef.current = turnKey;
+      onPickReady();
+    }, lastPopMs);
+
+    return () => window.clearTimeout(t);
+  }, [isMyTurn, onPickReady, turnKey, phase, firstPageCount, offer]);
 
   if (!offer) return null;
 

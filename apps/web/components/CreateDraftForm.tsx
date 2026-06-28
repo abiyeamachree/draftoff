@@ -344,15 +344,15 @@ export function CreateDraftForm() {
         </div>
 
         <div className="space-y-2">
-          {fieldLabel("League teams")}
+          {fieldLabel("Fill teams")}
           <button
             type="button"
             onClick={() => setTeamsOpen(true)}
             className="btn btn-grey w-full py-3 text-[0.6rem]"
           >
             {settings.teams.length > 0
-              ? `Edit teams (${settings.teams.length})`
-              : "Pick clubs to fill the league…"}
+              ? `Edit fill teams (${settings.teams.length})`
+              : "Pick clubs or nations to fill the league…"}
           </button>
           <p
             className="text-white/60"
@@ -360,7 +360,7 @@ export function CreateDraftForm() {
           >
             {settings.teams.length === 0
               ? `Up to ${fillerSpots} non-human spots will be filled with bots.`
-              : `${Math.min(settings.teams.length, fillerSpots)} of ${fillerSpots} non-human spots filled by your chosen clubs.`}
+              : `${Math.min(settings.teams.length, fillerSpots)} of ${fillerSpots} non-human spots filled by your chosen clubs or national teams.`}
           </p>
         </div>
       </div>

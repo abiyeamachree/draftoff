@@ -1,14 +1,14 @@
-import type { TournamentType } from "./tournament.js";
+import type { TournamentType, TournamentState } from "./tournament.js";
+import type { SquadSummary } from "./squadSummary.js";
 
 export type TeamSize = 5 | 8 | 11;
 
 export type LobbyStatus =
   | "LOBBY"      // gathering players, configuring settings
-  | "DRAFTING"   // snake draft in progress
+  | "DRAFTING"   // draft in progress
   | "SIMULATING" // tournament being simulated
   | "FINISHED";  // winner decided
 
-/** Public lobbies appear in the browser; private lobbies join by code only. */
 export type LobbyVisibility = "public" | "private";
 
 /** How squads are drafted. */
@@ -20,7 +20,6 @@ export const DRAFT_TYPE_LABELS: Record<DraftType, string> = {
   pack: "Pack (random)",
 };
 
-/** A bucket of selections per category. Empty arrays mean "nothing here". */
 export interface PoolFilter {
   leagues: string[];
   seasons: string[];
@@ -31,7 +30,6 @@ export interface PoolFilter {
 export const POOL_KEYS = ["leagues", "seasons", "nations", "clubs"] as const;
 export type PoolCategory = (typeof POOL_KEYS)[number];
 
-/** How include rules combine. */
 export type PoolLogic = "OR" | "AND";
 
 /**
@@ -48,18 +46,13 @@ export interface PoolRules {
 
 /** Host-configurable lobby settings. */
 export interface LobbySettings {
-  /** Display name of the draft. */
   name: string;
-  /** Total teams in the league/tournament (humans + filler clubs). */
   numTeams: number;
-  /** Real clubs that fill the league spots not taken by human managers. */
   teams: string[];
-  /** Footballers per squad. */
   teamSize: TeamSize;
   tournamentType: TournamentType;
   draftType: DraftType;
   draftTimerSeconds: number;
-  /** Players per pack when draftType is "pack". */
   packSize: number;
   visibility: LobbyVisibility;
   pool: PoolRules;
@@ -77,7 +70,6 @@ export interface LobbySettings {
    * team = random club+year, league/nation/position = random bucket in that year.
    */
   pickCycleMode: PickCycleMode;
-  /** Re-rolls allowed per pick (0–5). */
   rerollsPerPick: number;
 }
 
@@ -134,7 +126,6 @@ function flattenFilter(filter: PoolFilter): string[] {
   return POOL_KEYS.flatMap((key) => filter[key]);
 }
 
-/** Count of every include + exclude selection across categories. */
 export function countPoolRules(rules: PoolRules): number {
   return flattenFilter(rules.include).length + flattenFilter(rules.exclude).length;
 }
@@ -160,17 +151,16 @@ export type ConnectionStatus = "connected" | "disconnected";
 
 /** A participant in a lobby. */
 export interface LobbyPlayer {
-  /** Stable user id (persisted). */
   userId: string;
   displayName: string;
   /** Emoji avatar chosen on the lobby screen. */
   icon: string;
-  /** Chosen formation (e.g. "4-3-3"); empty until picked. */
   formation: string;
   isHost: boolean;
   isReady: boolean;
-  /** Draft slot (0-based), assigned when the draft starts. */
   draftSlot: number | null;
+  isFiller?: boolean;
+  fillKind?: "nation" | "club" | "bot";
   connection: ConnectionStatus;
 }
 
@@ -192,7 +182,6 @@ export function defaultFormation(teamSize: number): string {
   return (FORMATIONS_BY_SIZE[teamSize] ?? FORMATIONS_BY_SIZE[11])[0];
 }
 
-/** Outfield rows (defence -> attack) parsed from a formation string. */
 export function formationRows(formation: string): number[] {
   return formation
     .split("-")
@@ -200,7 +189,7 @@ export function formationRows(formation: string): number[] {
     .filter((n) => Number.isFinite(n));
 }
 
-/** Rocket-League-style preset quick-chat phrases. */
+/** Preset quick-chat phrases. */
 export const QUICK_CHAT_PHRASES = [
   "Great pick!",
   "What a player!",
@@ -216,13 +205,13 @@ export const QUICK_CHAT_PHRASES = [
   "Close one!",
 ] as const;
 
-/** Emoji reactions for quick chat. */
+/** Quick chat emoji reactions. */
 export const QUICK_CHAT_EMOJIS = [
   "😂", "😭", "🔥", "👏", "💀", "🐐", "😱", "🤝",
   "🙏", "😤", "🥶", "🤯", "👀", "💪", "🤡", "❤️",
 ] as const;
 
-/** A single chat message broadcast within a lobby/draft room. */
+/** A single chat message broadcast within a lobby. */
 export interface ChatMessage {
   id: string;
   userId: string;
@@ -239,6 +228,8 @@ export interface LobbyState {
   hostId: string;
   settings: LobbySettings;
   players: LobbyPlayer[];
+  tournament?: TournamentState | null;
+  squadSummaries?: SquadSummary[];
 }
 
 /** Compact lobby info for the public lobby browser on the home screen. */

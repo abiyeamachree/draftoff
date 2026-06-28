@@ -2,6 +2,7 @@
 
 import { emptyPoolFilter, emptyPoolRules } from "@draftoff/shared";
 import type { LobbySettings, PoolFilter } from "@draftoff/shared";
+import { nationFillLabel } from "@draftoff/shared";
 import { UCL_2526_CLUBS, WC_2026_NATIONS } from "@/lib/competitionTeams";
 
 export type PoolKey = keyof PoolFilter;
@@ -360,7 +361,7 @@ export const BUILT_IN_PRESETS: Preset[] = [
       tournamentType: "groups_knockout",
       teamSize: 11,
       pickCycleMode: "nation",
-      teams: [],
+      teams: WC_2026_NATIONS.map((n) => nationFillLabel(n, "25/26")),
       pool: {
         ...emptyPoolRules(),
         include: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { PlayerPoolEntry } from "@draftoff/shared";
 import { defaultFormation, eligibleSlots, getIconKitColors } from "@draftoff/shared";
 import { useLobby } from "@/hooks/useLobby";
@@ -10,8 +11,11 @@ import { getUserId } from "@/lib/identity";
 import { PitchView } from "@/components/PitchView";
 import { PickPanel, squadPicksBySlot } from "@/components/PickPanel";
 import { RoomChatProvider, SpeechBubble, useRoomChat } from "@/components/RoomChat";
+import { GameSessionProvider } from "@/components/GameSession";
+import { HostControls } from "@/components/HostControls";
 
 function DraftContent({ code }: { code: string }) {
+  const router = useRouter();
   const { socket } = useSocket();
   const { draft, timeRemaining, startCountdown } = useDraft(code);
   const { lobby } = useLobby(code);
@@ -24,6 +28,18 @@ function DraftContent({ code }: { code: string }) {
   const [viewOwnTeam, setViewOwnTeam] = useState(false);
 
   useEffect(() => setMyUserId(getUserId(code) ?? ""), [code]);
+
+  useEffect(() => {
+    if (draft?.complete) {
+      router.push(`/results/${code}`);
+    }
+  }, [draft?.complete, code, router]);
+
+  useEffect(() => {
+    if (lobby?.status === "LOBBY") {
+      router.push(`/lobby/${code}`);
+    }
+  }, [lobby?.status, code, router]);
 
   const playerFor = (userId: string | null) =>
     lobby?.players.find((p) => p.userId === userId) ?? null;
@@ -117,6 +133,7 @@ function DraftContent({ code }: { code: string }) {
 
   return (
     <section className="relative mx-auto flex min-h-[85vh] max-w-5xl flex-col pb-20">
+      <HostControls code={code} />
       <header className="flex items-center justify-between">
         <h1 className="title text-xl">
           {lobby?.settings.name || (
@@ -252,6 +269,7 @@ function DraftContent({ code }: { code: string }) {
 
           {!countingDown && (
             <PickPanel
+              key={turnKey}
               code={code}
               offer={draft.turnOffer}
               turnKey={turnKey}
@@ -280,8 +298,10 @@ export function DraftRoom({ code }: { code: string }) {
   const playerIds = lobby?.players.map((p) => p.userId) ?? [];
 
   return (
-    <RoomChatProvider code={code} playerIds={playerIds}>
-      <DraftContent code={code} />
-    </RoomChatProvider>
+    <GameSessionProvider code={code}>
+      <RoomChatProvider code={code} playerIds={playerIds}>
+        <DraftContent code={code} />
+      </RoomChatProvider>
+    </GameSessionProvider>
   );
 }

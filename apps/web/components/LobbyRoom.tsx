@@ -12,6 +12,9 @@ import { useSocket } from "@/hooks/useSocket";
 import { getUserId } from "@/lib/identity";
 import { sanitiseName } from "@/lib/name";
 import { RoomChatProvider, SpeechBubble, useRoomChat } from "@/components/RoomChat";
+import { GameSessionProvider } from "@/components/GameSession";
+import { HostControls, kickPlayer } from "@/components/HostControls";
+import { LobbySettingsEditor } from "@/components/LobbySettingsEditor";
 
 function LobbyContent({ code }: { code: string }) {
   const router = useRouter();
@@ -69,6 +72,19 @@ function LobbyContent({ code }: { code: string }) {
     });
   }
 
+  function leaveQuietly() {
+    socket.emit("lobby:leave", { code, userId: myUserId, quit: true }, () => {
+      router.push("/");
+    });
+  }
+
+  function kick(targetUserId: string) {
+    if (!confirm("Remove this player from the lobby?")) return;
+    kickPlayer(socket, code, myUserId, targetUserId, (err) => {
+      if (err) setError(err);
+    });
+  }
+
   if (!lobby) {
     return (
       <section className="mx-auto max-w-2xl space-y-4">
@@ -86,6 +102,7 @@ function LobbyContent({ code }: { code: string }) {
 
   return (
     <section className="mx-auto flex min-h-[80vh] max-w-2xl flex-col pb-20">
+      <HostControls code={code} />
       <div className="flex-1 space-y-6">
         <header className="flex items-center justify-between gap-3">
           <h1 className="title text-xl">{title}</h1>
@@ -224,10 +241,21 @@ function LobbyContent({ code }: { code: string }) {
                   )}
                 </span>
                 {p.isHost && <span className="pill bg-gold/20 text-gold">Host</span>}
+                {isHost && p.userId !== myUserId && (
+                  <button
+                    type="button"
+                    onClick={() => kick(p.userId)}
+                    className="btn btn-grey px-2 py-1 text-[0.5rem] text-red-200"
+                  >
+                    Kick
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         </div>
+
+        {isHost && <LobbySettingsEditor code={code} settings={lobby.settings} />}
 
         {isHost ? (
           <button
@@ -239,9 +267,14 @@ function LobbyContent({ code }: { code: string }) {
             {busy ? "Starting…" : "Start draft"}
           </button>
         ) : (
-          <p className="text-center font-bold text-white/50">
-            Waiting for the host to start the draft…
-          </p>
+          <div className="space-y-3 text-center">
+            <p className="font-bold text-white/50">
+              Waiting for the host to start the draft…
+            </p>
+            <button type="button" onClick={leaveQuietly} className="btn btn-grey px-6 py-2 text-sm">
+              Leave lobby
+            </button>
+          </div>
         )}
 
         {error && <p className="text-center text-sm font-bold text-red-300">{error}</p>}
@@ -255,8 +288,10 @@ export function LobbyRoom({ code }: { code: string }) {
   const playerIds = lobby?.players.map((p) => p.userId) ?? [];
 
   return (
-    <RoomChatProvider code={code} playerIds={playerIds}>
-      <LobbyContent code={code} />
-    </RoomChatProvider>
+    <GameSessionProvider code={code}>
+      <RoomChatProvider code={code} playerIds={playerIds}>
+        <LobbyContent code={code} />
+      </RoomChatProvider>
+    </GameSessionProvider>
   );
 }

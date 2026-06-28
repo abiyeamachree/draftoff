@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import asyncio
 
-from .draft_engine import apply_pick, generate_turn_offer, try_auto_pick
+from .draft_engine import generate_turn_offer, try_auto_pick
 from .realtime import room, sio
 from .store import store
+
+_finalize_hook = None
+
+
+def set_finalize_hook(fn) -> None:
+    global _finalize_hook
+    _finalize_hook = fn
 
 
 class DraftTimerManager:
@@ -78,6 +85,8 @@ class DraftTimerManager:
                         lobby.draft = result
                         await sio.emit("draft:state", lobby.draft, to=room(code))
                         if lobby.draft.get("complete"):
+                            if _finalize_hook:
+                                await _finalize_hook(lobby)
                             break
                     elif err:
                         draft["turnOffer"] = generate_turn_offer(

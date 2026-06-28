@@ -17,6 +17,11 @@ export interface CatalogSeason {
   playerCount: number;
 }
 
+export interface CatalogNation {
+  nation: string;
+  playerCount: number;
+}
+
 export const TAG_LABELS: Record<TeamTag, string> = {
   ucl: "UCL",
   uel: "Europa",
@@ -29,6 +34,13 @@ export async function fetchSeasons(): Promise<CatalogSeason[]> {
   const res = await fetch(`${API_BASE}/api/catalog/seasons`);
   if (!res.ok) throw new Error("Failed to load seasons");
   return res.json();
+}
+
+export async function fetchNations(season: string): Promise<CatalogNation[]> {
+  const res = await fetch(`${API_BASE}/api/catalog/nations?season=${encodeURIComponent(season)}`);
+  if (!res.ok) throw new Error("Failed to load nations");
+  const data = (await res.json()) as { nations: CatalogNation[] };
+  return data.nations;
 }
 
 export async function fetchLeagues(season: string): Promise<string[]> {

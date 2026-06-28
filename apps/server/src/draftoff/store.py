@@ -214,6 +214,53 @@ def parse_settings(raw: dict | None) -> dict:
     return settings
 
 
+_SETTING_LABELS: dict[str, str] = {
+    "name": "Draft name",
+    "numTeams": "Teams",
+    "teamSize": "Squad size",
+    "tournamentType": "Format",
+    "draftType": "Draft type",
+    "draftTimerSeconds": "Pick timer",
+    "packSize": "Pack size",
+    "visibility": "Visibility",
+    "pickCycleMode": "Pick cycle",
+    "rerollsPerPick": "Re-rolls per pick",
+    "peakCardsEnabled": "Peak cards",
+    "hideRatings": "Hide ratings",
+    "chatEnabled": "Chat",
+    "draftBoardEnabled": "Draft board",
+    "fillWithBots": "Fill with bots",
+    "maxPerClub": "Max per club",
+    "maxPerNation": "Max per nation",
+    "maxPerLeague": "Max per league",
+}
+
+
+def _fmt_setting_value(key: str, value: object) -> str:
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    if key == "draftTimerSeconds":
+        return f"{value}s"
+    if key == "teams" and isinstance(value, list):
+        return f"{len(value)} teams"
+    if key == "pool":
+        return "updated"
+    return str(value)
+
+
+def _describe_settings_changes(old: dict, new: dict) -> list[str]:
+    changes: list[str] = []
+    for key in _SETTING_LABELS:
+        if old.get(key) != new.get(key):
+            label = _SETTING_LABELS[key]
+            changes.append(f"{label} → {_fmt_setting_value(key, new.get(key))}")
+    if old.get("teams") != new.get("teams"):
+        changes.append(f"Fill teams → {_fmt_setting_value('teams', new.get('teams'))}")
+    if old.get("pool") != new.get("pool"):
+        changes.append("Player pool updated")
+    return changes
+
+
 class Lobby:
     def __init__(self, code: str, host_name: str, settings: dict):
         self.code = code
@@ -221,6 +268,8 @@ class Lobby:
         self.settings = settings
         self.players: list[dict] = []
         self.draft: dict | None = None
+        self.tournament: dict | None = None
+        self.squad_summaries: list[dict] | None = None
         self.host_id = self.add_player(host_name, is_host=True)
 
     def add_player(self, display_name: str, is_host: bool = False) -> str:
@@ -280,6 +329,8 @@ class Lobby:
             "hostId": self.host_id,
             "settings": self.settings,
             "players": self.players,
+            "tournament": self.tournament,
+            "squadSummaries": self.squad_summaries,
         }
 
     def chat_message(self, user_id: str, text: str) -> dict | None:
@@ -297,6 +348,55 @@ class Lobby:
             "text": clean,
             "at": int(time.time() * 1000),
         }
+
+    def system_chat(self, text: str, *, label: str = "Settings", icon: str = "⚙️") -> dict:
+        return {
+            "id": uuid.uuid4().hex[:12],
+            "userId": "__system__",
+            "name": label,
+            "icon": icon,
+            "text": text[:CHAT_MAX],
+            "at": int(time.time() * 1000),
+        }
+
+    def remove_player(self, user_id: str) -> bool:
+        if not self.find_player(user_id):
+            return False
+        if user_id == self.host_id:
+            return False
+        self.players = [p for p in self.players if p["userId"] != user_id]
+        return True
+
+    def reopen(self) -> None:
+        self.status = "LOBBY"
+        self.draft = None
+        self.tournament = None
+        self.squad_summaries = None
+        for player in self.players:
+            player["draftSlot"] = None
+            if not player.get("isFiller"):
+                player["isReady"] = bool(player.get("isHost"))
+
+    def update_settings(self, patch: dict) -> list[str]:
+        merged = {**self.settings, **patch}
+        if isinstance(patch.get("pool"), dict):
+            current_pool = self.settings.get("pool") or _empty_pool()
+            patch_pool = patch["pool"]
+            merged_pool = {
+                "logic": patch_pool.get("logic", current_pool.get("logic", "OR")),
+                "include": patch_pool.get("include", current_pool.get("include")),
+                "exclude": patch_pool.get("exclude", current_pool.get("exclude")),
+            }
+            merged["pool"] = merged_pool
+        new_settings = parse_settings(merged)
+        changes = _describe_settings_changes(self.settings, new_settings)
+        self.settings = new_settings
+        allowed = FORMATIONS_BY_SIZE.get(new_settings["teamSize"], [])
+        if allowed:
+            for player in self.players:
+                if player.get("formation") not in allowed:
+                    player["formation"] = allowed[0]
+        return changes
 
     def to_summary(self) -> dict:
         host = next((p for p in self.players if p["isHost"]), None)

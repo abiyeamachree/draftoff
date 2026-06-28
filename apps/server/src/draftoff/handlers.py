@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from .draft_engine import apply_pick, generate_turn_offer
 from .draft_timer import timers
+from .post_draft import finalize_draft, run_match_simulation
 from .realtime import room, sio
 from .session_tracker import sessions
 from .store import MAX_PLAYERS_PER_LOBBY, is_valid_name, parse_settings, store
@@ -31,8 +32,31 @@ async def _broadcast_list() -> None:
     await sio.emit("lobby:list", store.summaries())
 
 
-def _bind_session(sid: str, code: str) -> None:
-    sessions.bind(sid, code)
+async def _maybe_finalize_draft(lobby) -> None:
+    if not lobby.draft or not lobby.draft.get("complete"):
+        return
+    if lobby.tournament is not None:
+        return
+    finalize_draft(lobby)
+    timers.stop(lobby.code)
+    await sio.emit("tournament:state", lobby.tournament, to=room(lobby.code))
+    await _broadcast_lobby(lobby)
+    await _broadcast_list()
+
+
+def _bind_session(sid: str, code: str, user_id: str | None = None) -> None:
+    sessions.bind(sid, code, user_id)
+
+
+async def _emit_system_chat(lobby, text: str, *, label: str = "Settings") -> None:
+    message = lobby.system_chat(text, label=label)
+    await sio.emit("chat:message", message, to=room(lobby.code))
+
+
+def _require_host(lobby, user_id: str) -> str | None:
+    if not user_id or user_id != lobby.host_id:
+        return "Only the host can do that"
+    return None
 
 
 async def _remove_if_abandoned(code: str) -> None:
@@ -83,7 +107,7 @@ async def lobby_create(sid, data):
     lobby = store.create(host_name=name, settings=settings)
 
     await sio.enter_room(sid, room(lobby.code))
-    _bind_session(sid, lobby.code)
+    _bind_session(sid, lobby.code, lobby.host_id)
     await _broadcast_lobby(lobby)
     await _broadcast_list()
     return ok(
@@ -111,7 +135,7 @@ async def lobby_join(sid, data):
 
     user_id = lobby.add_player(name)
     await sio.enter_room(sid, room(code))
-    _bind_session(sid, code)
+    _bind_session(sid, code, user_id)
     await _broadcast_lobby(lobby)
     await _broadcast_list()
     return ok({"userId": user_id, "state": lobby.to_state()})
@@ -158,8 +182,9 @@ async def lobby_sync(sid, data):
     lobby = store.get((data.get("code") or "").upper())
     if not lobby:
         return err("Lobby not found")
+    user_id = data.get("userId") or sessions.user_id_for_sid(sid)
     await sio.enter_room(sid, room(lobby.code))
-    _bind_session(sid, lobby.code)
+    _bind_session(sid, lobby.code, user_id)
     return ok(lobby.to_state())
 
 
@@ -167,10 +192,118 @@ async def lobby_sync(sid, data):
 async def lobby_leave(sid, data):
     data = data or {}
     code = (data.get("code") or "").upper()
+    user_id = data.get("userId") or sessions.user_id_for_sid(sid)
+    lobby = store.get(code) if code else None
+    if lobby and user_id and data.get("quit"):
+        player = lobby.find_player(user_id)
+        if player and not player.get("isHost") and lobby.status == "LOBBY":
+            lobby.remove_player(user_id)
+            await _broadcast_lobby(lobby)
+            await _broadcast_list()
     if code:
         await sio.leave_room(sid, room(code))
     sessions.unbind(sid)
     await _on_session_left(code)
+    return ok(None)
+
+
+@sio.on("lobby:updateSettings")
+async def lobby_update_settings(sid, data):
+    data = data or {}
+    lobby = store.get((data.get("code") or "").upper())
+    if not lobby:
+        return err("Lobby not found")
+    user_id = data.get("userId") or ""
+    host_err = _require_host(lobby, user_id)
+    if host_err:
+        return err(host_err)
+    if lobby.status != "LOBBY":
+        return err("Return to lobby settings first")
+
+    patch = data.get("settings")
+    if not isinstance(patch, dict):
+        return err("Invalid settings")
+    changes = lobby.update_settings(patch)
+    await _broadcast_lobby(lobby)
+    await _broadcast_list()
+    for change in changes:
+        await _emit_system_chat(lobby, f"Host changed {change}")
+    return ok(lobby.to_state())
+
+
+@sio.on("lobby:reopen")
+async def lobby_reopen(sid, data):
+    data = data or {}
+    lobby = store.get((data.get("code") or "").upper())
+    if not lobby:
+        return err("Lobby not found")
+    user_id = data.get("userId") or ""
+    host_err = _require_host(lobby, user_id)
+    if host_err:
+        return err(host_err)
+
+    timers.stop(lobby.code)
+    lobby.reopen()
+    await _broadcast_lobby(lobby)
+    await _emit_system_chat(lobby, "Host returned to settings — game reset")
+    await _broadcast_list()
+    return ok(lobby.to_state())
+
+
+@sio.on("lobby:kick")
+async def lobby_kick(sid, data):
+    data = data or {}
+    lobby = store.get((data.get("code") or "").upper())
+    if not lobby:
+        return err("Lobby not found")
+    user_id = data.get("userId") or ""
+    host_err = _require_host(lobby, user_id)
+    if host_err:
+        return err(host_err)
+    target = data.get("targetUserId") or ""
+    if not target:
+        return err("Player required")
+    if target == lobby.host_id:
+        return err("Cannot kick yourself")
+    if lobby.status != "LOBBY":
+        return err("Return to lobby settings to remove players")
+    if not lobby.find_player(target):
+        return err("Player not found")
+
+    lobby.remove_player(target)
+    for kick_sid in sessions.sids_for_user(lobby.code, target):
+        await sio.emit(
+            "lobby:kicked",
+            {"message": "You were removed from the lobby by the host"},
+            to=kick_sid,
+        )
+        await sio.leave_room(kick_sid, room(lobby.code))
+        sessions.unbind(kick_sid)
+    await _broadcast_lobby(lobby)
+    await _broadcast_list()
+    return ok(None)
+
+
+@sio.on("lobby:end")
+async def lobby_end(sid, data):
+    data = data or {}
+    code = (data.get("code") or "").upper()
+    lobby = store.get(code)
+    if not lobby:
+        return err("Lobby not found")
+    user_id = data.get("userId") or ""
+    host_err = _require_host(lobby, user_id)
+    if host_err:
+        return err(host_err)
+
+    await sio.emit(
+        "lobby:ended",
+        {"message": "The host ended this game"},
+        to=room(code),
+    )
+    timers.stop(code)
+    store.remove(code)
+    await _broadcast_list()
     return ok(None)
 
 
@@ -217,7 +350,10 @@ async def draft_pick(sid, data):
     if pick_err:
         return err(pick_err)
     lobby.draft = draft
-    timers.ensure_running(lobby.code)
+    if draft.get("complete"):
+        await _maybe_finalize_draft(lobby)
+    else:
+        timers.ensure_running(lobby.code)
     await sio.emit("draft:state", lobby.draft, to=room(lobby.code))
     return ok(None)
 
@@ -268,8 +404,43 @@ async def draft_sync(sid, data):
     lobby = store.get((data.get("code") or "").upper())
     if not lobby or not lobby.draft:
         return err("Draft has not started yet")
+    user_id = data.get("userId") or sessions.user_id_for_sid(sid)
     await sio.enter_room(sid, room(lobby.code))
-    _bind_session(sid, lobby.code)
+    _bind_session(sid, lobby.code, user_id)
     if lobby.draft and not lobby.draft.get("complete"):
         timers.ensure_running(lobby.code)
+    elif lobby.draft and lobby.draft.get("complete"):
+        await _maybe_finalize_draft(lobby)
     return ok(lobby.draft)
+
+
+@sio.on("sim:runMatch")
+async def sim_run_match(sid, data):
+    data = data or {}
+    lobby = store.get((data.get("code") or "").upper())
+    if not lobby:
+        return err("Lobby not found")
+    if not lobby.tournament:
+        return err("Tournament has not started")
+    user_id = data.get("userId") or ""
+    if user_id != lobby.host_id:
+        return err("Only the host can simulate matches")
+    match_id = data.get("matchId") or ""
+    if not match_id:
+        return err("Match id required")
+
+    result = run_match_simulation(lobby, match_id)
+    if not result:
+        return err("Could not simulate match")
+
+    await sio.emit("sim:matchResult", result, to=room(lobby.code))
+    await sio.emit("tournament:state", lobby.tournament, to=room(lobby.code))
+    await _broadcast_lobby(lobby)
+    if lobby.status == "FINISHED":
+        await _broadcast_list()
+    return ok(result)
+
+
+from . import draft_timer as _draft_timer_module
+
+_draft_timer_module.set_finalize_hook(_maybe_finalize_draft)

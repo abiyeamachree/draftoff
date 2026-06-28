@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from .db import get_session, player_count
 from .editions import EDITION_TO_SEASON, SEASON_TO_EDITION, TEAM_TAG_LABELS
-from .pool import list_leagues, list_seasons, list_teams
+from .pool import list_leagues, list_nations, list_seasons, list_teams
 
 router = APIRouter(prefix="/api/catalog", tags=["catalog"])
 
@@ -29,6 +29,19 @@ def catalog_leagues(season: str = Query(...)):
         raise HTTPException(404, "Unknown season")
     with get_session() as session:
         return {"season": season, "edition": edition, "leagues": list_leagues(session, edition)}
+
+
+@router.get("/nations")
+def catalog_nations(season: str = Query(...)):
+    edition = SEASON_TO_EDITION.get(season)
+    if not edition:
+        raise HTTPException(404, "Unknown season")
+    with get_session() as session:
+        return {
+            "season": season,
+            "edition": edition,
+            "nations": list_nations(session, edition),
+        }
 
 
 @router.get("/teams")

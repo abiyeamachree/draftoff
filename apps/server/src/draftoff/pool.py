@@ -321,6 +321,18 @@ def list_leagues(session: Session, edition: str) -> list[str]:
     return list(rows)
 
 
+def list_nations(session: Session, edition: str) -> list[dict]:
+    from sqlalchemy import func
+
+    rows = session.execute(
+        select(Player.nation, func.count(Player.id))
+        .where(Player.edition == edition, Player.nation != "")
+        .group_by(Player.nation)
+        .order_by(Player.nation)
+    ).all()
+    return [{"nation": nation, "playerCount": int(count)} for nation, count in rows]
+
+
 def list_teams(
     session: Session,
     edition: str,

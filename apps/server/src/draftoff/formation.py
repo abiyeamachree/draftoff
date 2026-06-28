@@ -119,6 +119,17 @@ def slot_line_label(slot_index: int, formation: str, team_size: int = 11) -> str
     return roles[slot_index] if slot_index < len(roles) else "MID"
 
 
+def slot_line(slot_index: int, formation: str, team_size: int = 11) -> str:
+    role = formation_slot_roles(formation, team_size)[slot_index]
+    if role == "GK":
+        return "GK"
+    if role in {"DEF", "LB", "RB", "CB", "LWB", "RWB"}:
+        return "DEF"
+    if role in {"FWD", "ST", "CF", "LW", "RW"}:
+        return "FWD"
+    return "MID"
+
+
 def default_formation(team_size: int) -> str:
     defaults = {11: "4-4-2", 8: "3-3-1", 5: "2-1-1"}
     return defaults.get(team_size, "4-4-2")

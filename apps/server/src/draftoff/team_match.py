@@ -5,7 +5,7 @@ from __future__ import annotations
 # Common shorthand -> preferred substring for fuzzy match
 ALIASES: dict[str, str] = {
     "Barcelona": "FC Barcelona",
-    "Bayern Munich": "FC Bayern München",
+    "Bayern Munich": "Bayern Munich FC",
     "Bayer Leverkusen": "Bayer 04 Leverkusen",
     "Atletico Madrid": "Atlético Madrid",
     "Athletic Bilbao": "Athletic Club",

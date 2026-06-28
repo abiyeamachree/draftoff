@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import socketio
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from .realtime import sio
+from .realtime import cors_allowed_origins, sio
 
 # Importing handlers registers the @sio event handlers as a side effect.
 from . import handlers  # noqa: E402,F401
@@ -13,6 +14,13 @@ from .catalog_routes import router as catalog_router
 from .db import init_db, player_count
 
 api = FastAPI(title="DraftOff server")
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_allowed_origins if cors_allowed_origins != "*" else ["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 api.include_router(catalog_router)
 
 

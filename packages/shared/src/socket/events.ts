@@ -82,9 +82,9 @@ export interface ClientToServerEvents {
     payload: SyncPayload,
     ack: (res: Ack<LobbyState>) => void
   ) => void;
-  /** Leave a lobby room (navigation away / tab close handled separately). */
+  /** Leave a lobby room. Pass quit: true to leave the player list (explicit leave). */
   "lobby:leave": (
-    payload: { code: string; userId?: string },
+    payload: { code: string; userId?: string; quit?: boolean },
     ack: (res: Ack<null>) => void
   ) => void;
   /** Re-subscribe a socket to a draft room and fetch current state. */
@@ -113,7 +113,22 @@ export interface ClientToServerEvents {
     ack: (res: Ack<null>) => void
   ) => void;
   "lobby:updateSettings": (
-    payload: { code: string; settings: Partial<LobbySettings> },
+    payload: { code: string; userId?: string; settings: Partial<LobbySettings> },
+    ack: (res: Ack<LobbyState>) => void
+  ) => void;
+  /** Host returns everyone to lobby settings and resets the in-progress game. */
+  "lobby:reopen": (
+    payload: { code: string; userId?: string },
+    ack: (res: Ack<LobbyState>) => void
+  ) => void;
+  /** Host removes a player from the lobby. */
+  "lobby:kick": (
+    payload: { code: string; userId?: string; targetUserId: string },
+    ack: (res: Ack<null>) => void
+  ) => void;
+  /** Host ends the game for everyone. */
+  "lobby:end": (
+    payload: { code: string; userId?: string },
     ack: (res: Ack<null>) => void
   ) => void;
   "lobby:start": (
@@ -142,6 +157,11 @@ export interface ClientToServerEvents {
     payload: ResumePayload,
     ack: (res: Ack<null>) => void
   ) => void;
+  /** Simulate (or re-fetch) a single tournament fixture. Host only. */
+  "sim:runMatch": (
+    payload: { code: string; matchId: string; userId?: string },
+    ack: (res: Ack<MatchResult>) => void
+  ) => void;
 }
 
 /** Authoritative broadcasts the server sends to clients. */
@@ -167,6 +187,10 @@ export interface ServerToClientEvents {
   "tournament:state": (state: TournamentState) => void;
   /** A quick-chat message broadcast to everyone in the room. */
   "chat:message": (message: ChatMessage) => void;
+  /** You were removed by the host — show overlay and return home. */
+  "lobby:kicked": (payload: { message: string }) => void;
+  /** Host ended the game — show overlay for everyone still in the room. */
+  "lobby:ended": (payload: { message: string }) => void;
   "error": (payload: { code: string; message: string }) => void;
 }
 

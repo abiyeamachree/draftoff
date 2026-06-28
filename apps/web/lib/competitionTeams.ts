@@ -64,6 +64,70 @@ export const WC_2026_NATIONS = [
   "Turkey",
 ] as const;
 
+/** WC 2026 qualified nations grouped by confederation (for fill-team picker). */
+export const WC_2026_BY_CONFED: Record<string, readonly string[]> = {
+  AFC: [
+    "Australia",
+    "Iran",
+    "Iraq",
+    "Japan",
+    "Jordan",
+    "Qatar",
+    "Saudi Arabia",
+    "South Korea",
+    "Uzbekistan",
+  ],
+  CAF: [
+    "Algeria",
+    "Cape Verde",
+    "DR Congo",
+    "Egypt",
+    "Ghana",
+    "Ivory Coast",
+    "Morocco",
+    "Senegal",
+    "South Africa",
+    "Tunisia",
+  ],
+  CONCACAF: [
+    "Canada",
+    "Curaçao",
+    "Haiti",
+    "Mexico",
+    "Panama",
+    "United States",
+  ],
+  CONMEBOL: [
+    "Argentina",
+    "Brazil",
+    "Colombia",
+    "Ecuador",
+    "Paraguay",
+    "Uruguay",
+  ],
+  OFC: ["New Zealand"],
+  UEFA: [
+    "Austria",
+    "Belgium",
+    "Bosnia and Herzegovina",
+    "Croatia",
+    "Czech Republic",
+    "England",
+    "France",
+    "Germany",
+    "Netherlands",
+    "Norway",
+    "Portugal",
+    "Scotland",
+    "Spain",
+    "Sweden",
+    "Switzerland",
+    "Turkey",
+  ],
+};
+
+export const WC_2026_SEASON = "25/26";
+
 /** 36 clubs in the 2025–26 UEFA Champions League league phase. */
 export const UCL_2526_CLUBS = [
   "Arsenal",

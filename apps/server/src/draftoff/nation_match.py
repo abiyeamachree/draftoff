@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-# Wikipedia / FIFA label -> SoFIFA DB label
 NATION_ALIASES: dict[str, str] = {
     "South Korea": "Korea Republic",
     "Korea Republic": "Korea Republic",
@@ -20,6 +19,24 @@ NATION_ALIASES: dict[str, str] = {
     "United States": "United States",
 }
 
+NATION_DISPLAY: dict[str, str] = {
+    "Congo DR": "DR Congo",
+    "Korea Republic": "South Korea",
+    "Côte d'Ivoire": "Ivory Coast",
+    "Czechia": "Czech Republic",
+    "Türkiye": "Turkey",
+    "Cabo Verde": "Cape Verde",
+    "Curacao": "Curaçao",
+}
+
+
+def display_nation_name(db_label: str) -> str:
+    return NATION_DISPLAY.get(db_label, db_label)
+
+
+def _word_set(name: str) -> set[str]:
+    return {w for w in name.lower().split() if len(w) > 1}
+
 
 def resolve_nation_name(want: str, available: set[str]) -> str | None:
     if want in available:
@@ -32,10 +49,26 @@ def resolve_nation_name(want: str, available: set[str]) -> str | None:
         if t.lower() == want_l:
             return t
     if alias:
+        alias_l = alias.lower()
         for t in available:
-            if alias.lower() in t.lower() or t.lower() in alias.lower():
+            if t.lower() == alias_l:
                 return t
-    matches = [t for t in available if want_l in t.lower()]
-    if len(matches) == 1:
-        return matches[0]
+        want_words = _word_set(alias)
+        if want_words:
+            word_matches = [
+                t for t in available if want_words <= _word_set(t)
+            ]
+            if len(word_matches) == 1:
+                return word_matches[0]
+    want_words = _word_set(want)
+    if want_words:
+        word_matches = [t for t in available if want_words <= _word_set(t)]
+        if len(word_matches) == 1:
+            return word_matches[0]
+    sub_matches = [
+        t for t in available
+        if want_l == t.lower() or want_l in t.lower() or t.lower() in want_l
+    ]
+    if len(sub_matches) == 1:
+        return sub_matches[0]
     return None

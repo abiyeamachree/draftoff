@@ -12,6 +12,7 @@ from .db.session import get_session
 from .editions import EDITION_TO_SEASON
 from .formation import default_formation, eligible_slots, formation_slot_count
 from .positions import normalize_player_positions
+from .nation_match import display_nation_name
 from .pool import (
     apply_peak_to_options,
     expand_pool_for_edition,
@@ -196,7 +197,9 @@ def generate_turn_offer(
                 return offer
             nation = random.choice(roll_pool)
             offer["nation"] = nation
-            offer["label"] = f"{nation} · {offer['season']}"
+            display = display_nation_name(nation)
+            offer["label"] = f"{display} · {offer['season']}"
+            offer["rollPool"] = [display_nation_name(n) for n in roll_pool]
             offer["options"] = query_offer_players(
                 session,
                 edition=edition,

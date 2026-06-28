@@ -21,8 +21,8 @@ const FACE_STATS: { key: keyof PlayerSummaryStats; label: string }[] = [
   { key: "physical", label: "PHY" },
 ];
 
-const CARD_W = 208;
-const CARD_EST_H = 230;
+const CARD_W = 300;
+const CARD_EST_H = 148;
 const VIEWPORT_PAD = 8;
 
 function HoverCardBody({ player }: { player: HoverPlayer }) {
@@ -30,39 +30,43 @@ function HoverCardBody({ player }: { player: HoverPlayer }) {
   const summary = player.summary;
 
   return (
-    <>
-      <span className="player-hover-head">
-        <NationFlag nation={player.nation} size={22} />
-        <span className="player-hover-name">{player.name}</span>
-        {player.isPeak ? <span className="player-hover-peak">Peak</span> : null}
-      </span>
-      <span className="player-hover-positions">{positions.join(" · ")}</span>
-      <span className="player-hover-meta">
-        {player.team || "Free agent"} · {player.nation}
-      </span>
+    <div className="player-hover-grid">
+      <div className="player-hover-top">
+        <div className="player-hover-identity">
+          <span className="player-hover-head">
+            <NationFlag nation={player.nation} size={18} />
+            <span className="player-hover-name">{player.name}</span>
+            {player.isPeak ? <span className="player-hover-peak">Peak</span> : null}
+          </span>
+          <span className="player-hover-positions">{positions.join(" · ")}</span>
+          <span className="player-hover-meta">
+            {player.team || "Free agent"} · {player.nation}
+          </span>
+        </div>
+        <StatBar
+          value={player.overall}
+          size="sm"
+          label="OVR"
+          showRecall
+          className="player-hover-ovr"
+        />
+      </div>
       {summary ? (
-        <span className="player-hover-stats">
+        <div className="player-hover-stats">
           {FACE_STATS.map(({ key, label }) => (
             <StatBar
               key={key}
               label={label}
               value={summary[key] ?? 0}
-              size="sm"
+              size="xs"
               showRecall
             />
           ))}
-        </span>
+        </div>
       ) : (
-        <span className="player-hover-meta">Stats unavailable</span>
+        <span className="player-hover-meta player-hover-stats-fallback">Stats unavailable</span>
       )}
-      <StatBar
-        value={player.overall}
-        size="sm"
-        label="OVR"
-        showRecall
-        className="player-hover-ovr"
-      />
-    </>
+    </div>
   );
 }
 
