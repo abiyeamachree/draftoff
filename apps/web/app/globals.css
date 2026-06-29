@@ -348,6 +348,76 @@ body::after {
     }
   }
 
+  .draft-room-body {
+    @apply grid gap-3;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 768px) {
+    .draft-room-body {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      min-height: 28rem;
+    }
+  }
+
+  .draft-room-pitch {
+    @apply flex items-center justify-center rounded-lg bg-black/30 p-2;
+    min-height: 18rem;
+  }
+
+  .draft-pitch-stage {
+    @apply relative w-full;
+    max-width: 28rem;
+    min-height: 18rem;
+  }
+
+  .draft-pitch-stage-inner {
+    @apply relative aspect-[4/5] w-full;
+  }
+
+  @media (min-width: 768px) {
+    .draft-room-pitch {
+      min-height: 28rem;
+    }
+
+    .draft-pitch-stage {
+      max-width: min(100%, 32rem);
+      height: min(100%, calc(100vh - 14rem));
+      min-height: 28rem;
+    }
+
+    .draft-pitch-stage-inner {
+      @apply absolute inset-0 h-full w-full;
+      aspect-ratio: auto;
+    }
+  }
+
+  .draft-room-panel {
+    @apply flex min-h-0 flex-col overflow-hidden rounded-lg border border-white/15 bg-neutral-900/90;
+    min-height: 16rem;
+  }
+
+  @media (min-width: 768px) {
+    .draft-room-panel {
+      min-height: 28rem;
+      max-height: calc(100vh - 10rem);
+    }
+  }
+
+  .draft-room-panel-header {
+    @apply flex shrink-0 items-start justify-between gap-2 border-b border-white/10 px-3 py-2;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .draft-room-panel-body {
+    @apply min-h-0 flex-1 space-y-3 overflow-y-auto p-3;
+  }
+
+  .pick-panel-embedded {
+    @apply max-w-none border-0 bg-transparent p-0;
+    box-shadow: none;
+  }
+
   .pick-player-list {
     max-height: none;
     overflow: visible;
@@ -929,11 +999,31 @@ body::after {
   }
 
   .player-hover-top {
-    @apply grid grid-cols-2 items-stretch gap-x-2;
+    @apply grid items-stretch gap-x-1.5;
+    grid-template-columns: minmax(0, 1fr) 9.75rem;
   }
 
   .player-hover-identity {
     @apply min-w-0;
+  }
+
+  .player-hover-ovr {
+    @apply relative h-full min-h-0 w-full self-stretch;
+    display: block;
+  }
+
+  .player-hover-ovr .stat-bar-track {
+    @apply absolute inset-0 h-full w-full;
+    min-height: 0;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  }
+
+  .player-hover-ovr .stat-bar-body {
+    clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+  }
+
+  .player-hover-ovr.stat-bar-elite {
+    padding: 3px 4px;
   }
 
   .player-hover-head {
@@ -956,33 +1046,9 @@ body::after {
     @apply block text-[0.45rem] leading-snug text-white/55;
   }
 
-  .player-hover-ovr {
-    @apply h-full min-h-0 items-end gap-1 self-stretch;
-  }
-
-  .player-hover-ovr .stat-bar-label {
-    font-size: 0.45rem;
-    min-width: 1.35rem;
-    align-self: flex-end;
-  }
-
-  .player-hover-ovr .stat-bar-track {
-    @apply flex-1;
-    height: 100%;
-    min-height: 0;
-    clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  }
-
-  .player-hover-ovr .stat-bar-body {
-    clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
-  }
-
-  .player-hover-ovr.stat-bar-elite {
-    padding: 3px 4px;
-  }
-
   .player-hover-stats {
     @apply grid grid-cols-2 gap-x-2 gap-y-1;
+    max-width: 86%;
   }
 
   .player-hover-stats-fallback {
@@ -1042,9 +1108,787 @@ body::after {
   }
 }
 
+/* Fixtures list */
+.fixtures-match-line {
+  @apply grid items-center gap-x-2 text-sm;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.fixtures-side {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.fixtures-side-home {
+  @apply justify-start;
+}
+
+.fixtures-side-away {
+  @apply justify-end;
+}
+
+.fixtures-vs {
+  @apply px-0.5 text-center;
+}
+
+.fixtures-marker-slot {
+  @apply inline-flex w-2 shrink-0 items-center justify-center;
+}
+
+.fixtures-human-marker {
+  @apply inline-block;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+}
+
+.fixtures-human-marker-home {
+  border-left: 6px solid #fde047;
+}
+
+.fixtures-human-marker-away {
+  border-right: 6px solid #fde047;
+}
+
+.fixtures-sim-slot {
+  @apply flex justify-end;
+}
+
+.fixtures-sim-btn {
+  @apply rounded px-3 py-1 text-xs font-bold transition-opacity;
+}
+
+.fixtures-sim-btn-next {
+  @apply bg-emerald-700 hover:bg-emerald-600;
+}
+
+.fixtures-sim-btn-watch {
+  @apply bg-sky-700 hover:bg-sky-600;
+}
+
+.fixtures-sim-btn-skip {
+  @apply bg-amber-700 hover:bg-amber-600;
+}
+
+.fixtures-sim-btn-hidden {
+  @apply pointer-events-none opacity-0;
+}
+
+.fixtures-sim-btn-visible {
+  @apply opacity-100;
+}
+
+.quick-sim-bar {
+  @apply border border-gold/40 bg-black/60;
+}
+
+.quick-sim-progress {
+  @apply h-1.5 overflow-hidden rounded-full bg-black/50;
+}
+
+.quick-sim-progress-fill {
+  @apply h-full bg-gold transition-[width] duration-75 ease-linear;
+}
+
+/* Fixtures hub */
+.fixtures-hub {
+  @apply flex flex-col gap-4;
+}
+
+.fixtures-scoreboard {
+  @apply border-4 border-black bg-[#0c5e44] p-4;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.12),
+    6px 6px 0 rgba(0, 0, 0, 0.55);
+}
+
+.fixtures-scoreboard-idle {
+  @apply text-center;
+}
+
+.fixtures-scoreboard-header {
+  @apply mb-3 flex flex-wrap items-center justify-between gap-2;
+}
+
+.fixtures-scoreboard-meta {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.fixtures-scoreboard-status {
+  @apply border-2 border-black px-2 py-1 uppercase;
+  font-family: "Press Start 2P", system-ui, monospace;
+  font-size: 0.45rem;
+  letter-spacing: 0.04em;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.65);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.fixtures-scoreboard-status-sim {
+  @apply bg-emerald-800 text-emerald-100;
+}
+
+.fixtures-scoreboard-status-watch {
+  @apply bg-sky-900 text-sky-100;
+}
+
+.fixtures-scoreboard-status-next {
+  @apply bg-black/50 text-white/70;
+}
+
+.fixtures-scoreboard-status-final {
+  @apply bg-black/50 text-white/50;
+}
+
+.fixtures-scoreboard-clock {
+  @apply border-2 border-black bg-black/70 px-3 py-1 font-mono text-base font-bold tabular-nums text-gold;
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.55);
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.35);
+}
+
+.fixtures-scoreboard-sim-all {
+  font-size: 0.45rem !important;
+  padding: 0.45rem 0.65rem !important;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55) !important;
+}
+
+.fixtures-scoreboard-match {
+  @apply relative flex items-stretch overflow-hidden;
+  border: 3px solid #111;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.45);
+  min-height: 3.5rem;
+}
+
+.fixtures-scoreboard-team {
+  @apply flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 font-bold uppercase text-white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.fixtures-scoreboard-team-home {
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  padding-right: 1.25rem;
+}
+
+.fixtures-scoreboard-team-away {
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%);
+  justify-content: flex-end;
+  padding-left: 1.25rem;
+}
+
+.fixtures-scoreboard-team-name {
+  @apply min-w-0 flex-1 truncate text-sm sm:text-base;
+}
+
+.fixtures-scoreboard-team-away .fixtures-scoreboard-team-name {
+  @apply text-right;
+}
+
+.fixtures-scoreboard-team-score {
+  font-family: "Press Start 2P", system-ui, monospace;
+  font-size: 1.15rem;
+  line-height: 1;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.65);
+}
+
+.fixtures-scoreboard-center {
+  @apply absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center;
+}
+
+.fixtures-scoreboard-center-label {
+  @apply border-2 border-black bg-[#374151] px-2 py-0.5 text-[0.45rem] font-bold uppercase tracking-widest text-white/90;
+  font-family: "Press Start 2P", system-ui, monospace;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.fixtures-scoreboard-center-extra {
+  @apply mt-1 text-[0.55rem] font-bold uppercase text-gold;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.fixtures-scoreboard-progress {
+  @apply relative mt-3 h-2 overflow-hidden border-2 border-black bg-black/60;
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.55);
+}
+
+.fixtures-scoreboard-progress-fill {
+  @apply h-full bg-gold transition-[width] duration-75 ease-linear;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.fixtures-scoreboard-actions {
+  @apply mt-3 flex flex-wrap items-center justify-center gap-2;
+}
+
+.fixtures-scoreboard-action-sim {
+  min-width: 5.5rem;
+  font-size: 0.55rem !important;
+}
+
+.fixtures-scoreboard-action-watch {
+  min-width: 5.5rem;
+  font-size: 0.55rem !important;
+  background: #2563eb !important;
+}
+
+.fixtures-scoreboard-action-watch:hover {
+  filter: brightness(1.12);
+}
+
+.fixtures-scoreboard-action-pause {
+  min-width: 0 !important;
+  width: 2.75rem;
+  padding: 0.55rem 0 !important;
+  font-size: 0.55rem !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fixtures-scoreboard-action-active {
+  @apply ring-2 ring-gold ring-offset-2 ring-offset-[#0c5e44];
+}
+
+.fixtures-scoreboard-host-note {
+  @apply mt-2 text-center text-sm text-white/50;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.fixtures-hub-body {
+  @apply grid gap-4;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: stretch;
+  min-height: 32rem;
+}
+
+@media (max-width: 900px) {
+  .fixtures-hub-body {
+    grid-template-columns: 1fr;
+  }
+
+  .fixtures-hub-side {
+    grid-template-rows: auto auto;
+    max-height: none;
+  }
+
+  .fixtures-list-panel {
+    max-height: none;
+  }
+}
+
+.fixtures-list-panel {
+  @apply flex min-h-0 flex-col rounded-xl border border-white/10 bg-black/30 p-3;
+  min-height: 32rem;
+  max-height: 36rem;
+}
+
+.fixtures-list-scroll {
+  @apply min-h-0 flex-1 overflow-y-auto pr-1;
+  max-height: 32rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.55) rgba(0, 0, 0, 0.2);
+}
+
+.fixtures-list-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.fixtures-list-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 0;
+}
+
+.fixtures-list-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 0;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+.fixtures-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.fixtures-matchday {
+  @apply mb-4 last:mb-0;
+}
+
+.fixtures-matchday-title {
+  @apply mb-2 text-xs font-bold uppercase tracking-wide text-gold/80;
+}
+
+.fixtures-row-btn {
+  @apply cursor-pointer transition ring-0;
+}
+
+.fixtures-row-mine {
+  border: 2px solid #fde047;
+  box-shadow:
+    0 0 8px rgba(250, 204, 21, 0.85),
+    0 0 20px rgba(250, 204, 21, 0.45),
+    inset 0 0 12px rgba(250, 204, 21, 0.15);
+}
+
+.fixtures-row-selected {
+  @apply ring-2 ring-white/60;
+}
+
+.fixtures-row-live {
+  @apply ring-1 ring-emerald-400/50;
+}
+
+.fixtures-row-live .fixtures-vs {
+  @apply text-emerald-300;
+  animation: fixtures-live-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes fixtures-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+.fixtures-hub-side {
+  @apply grid min-h-0 gap-3;
+  grid-template-rows: 1.15fr 1fr;
+  min-height: 32rem;
+  max-height: 36rem;
+}
+
+.fixtures-panel {
+  @apply flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-black/30 p-3;
+}
+
+.fixtures-standings-panel {
+  min-height: 0;
+}
+
+.fixtures-stats-panel {
+  min-height: 0;
+}
+
+.fixtures-panel-heading {
+  @apply mb-2 text-sm font-bold uppercase tracking-wide text-gold;
+}
+
+.fixtures-panel-title {
+  @apply mb-2 text-xs font-bold uppercase tracking-wide text-white/70;
+}
+
+.fixtures-carousel {
+  @apply flex min-h-0 flex-1 flex-col;
+}
+
+.fixtures-carousel-viewport {
+  @apply min-h-0 flex-1 overflow-y-auto;
+}
+
+.fixtures-standings-panel .fixtures-carousel,
+.fixtures-standings-panel .fixtures-carousel-viewport {
+  @apply min-h-0 flex-1;
+}
+
+.fixtures-standings-panel .fixtures-carousel-viewport {
+  @apply flex flex-col overflow-hidden;
+}
+
+.fixtures-standings-slide {
+  @apply flex min-h-0 flex-1 flex-col;
+}
+
+.fixtures-standings-panel .fixtures-standings-slide:not(.fixtures-bracket-slide) {
+  @apply overflow-y-auto;
+}
+
+.fixtures-stats-panel .fixtures-carousel-viewport {
+  min-height: 8rem;
+}
+
+.fixtures-carousel-controls {
+  @apply mt-2 flex items-center justify-center gap-2;
+}
+
+.fixtures-carousel-btn {
+  @apply flex h-6 w-6 items-center justify-center rounded bg-white/10 text-sm hover:bg-white/20;
+}
+
+.fixtures-carousel-dots {
+  @apply flex gap-1;
+}
+
+.fixtures-carousel-dot {
+  @apply h-1.5 w-1.5 rounded-full bg-white/25;
+}
+
+.fixtures-carousel-dot.active {
+  @apply bg-gold;
+}
+
+.fixtures-mini-table {
+  @apply w-full text-left text-[0.65rem];
+}
+
+.fixtures-mini-table th {
+  @apply pb-1 text-white/45 font-normal;
+}
+
+.fixtures-mini-table td {
+  @apply border-t border-white/10 py-1;
+}
+
+.fixtures-stat-list {
+  @apply space-y-1;
+}
+
+.fixtures-stat-row {
+  @apply grid items-center gap-2 text-xs;
+  grid-template-columns: 1.25rem 1fr auto auto;
+}
+
+.fixtures-stat-rank {
+  @apply text-white/40;
+}
+
+.fixtures-stat-count {
+  @apply font-bold text-gold;
+}
+
+.bracket-rounds {
+  @apply flex gap-3 overflow-x-auto pb-1;
+}
+
+.bracket-round {
+  @apply flex min-w-[7rem] flex-col gap-2;
+}
+
+.bracket-round-label {
+  @apply text-[0.55rem] uppercase text-white/40;
+}
+
+.bracket-match {
+  @apply rounded border border-white/15 bg-black/40 px-2 py-1.5 text-[0.6rem];
+}
+
+.bracket-match.played {
+  @apply border-gold/30;
+}
+
+.bracket-team {
+  @apply flex items-center gap-1 truncate;
+}
+
+.bracket-score {
+  @apply my-0.5 block text-center font-mono text-gold;
+}
+
+.bracket-preview-grid {
+  @apply grid grid-cols-4 gap-2;
+}
+
+.bracket-slot {
+  @apply flex flex-col items-center rounded border border-dashed border-white/20 bg-black/30 px-2 py-2 text-center;
+}
+
+/* Radial knockout bracket */
+.radial-bracket-wrap {
+  @apply relative mx-auto aspect-square w-full;
+  max-width: 18rem;
+}
+
+.fixtures-bracket-slide .radial-bracket-wrap {
+  flex: 0 1 auto;
+  width: min(100%, 17rem);
+  height: min(100%, 17rem);
+  max-height: 100%;
+  aspect-ratio: 1;
+}
+
+.radial-bracket-svg {
+  @apply block h-full w-full;
+}
+
+.radial-bracket-teams {
+  @apply absolute inset-0;
+}
+
+.radial-bracket-team {
+  @apply absolute -translate-x-1/2 -translate-y-1/2;
+}
+
+.radial-bracket-team-tooltip {
+  @apply pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded border border-white/20 bg-black/95 px-2 py-0.5 text-[0.55rem] font-bold text-white shadow-lg;
+}
+
+.radial-bracket-team:hover .radial-bracket-team-tooltip,
+.radial-bracket-team:focus-within .radial-bracket-team-tooltip {
+  @apply block;
+}
+
+.radial-bracket-tbd {
+  @apply flex h-[22px] w-[22px] items-center justify-center rounded-full border border-dashed border-white/25 bg-black/50 text-[0.55rem] text-white/40;
+}
+
+.radial-bracket-caption {
+  @apply mt-1 text-center text-[0.55rem] text-white/40;
+}
+
+.fixtures-bracket-slide {
+  @apply flex min-h-0 flex-1 flex-col items-center;
+}
+
 /* NSS-style match viewer */
 .match-viewer {
-  @apply flex flex-col gap-3;
+  @apply relative flex flex-col gap-3;
+}
+
+.match-viewer-toolbar {
+  @apply flex items-center justify-between gap-2;
+}
+
+.match-viewer-back {
+  @apply text-sm text-white/60 hover:text-white;
+}
+
+/* Broadcast scoreboard */
+.broadcast-scoreboard-wrap {
+  @apply mx-auto w-full max-w-2xl;
+}
+
+.broadcast-scoreboard {
+  @apply relative flex items-stretch overflow-hidden rounded-md;
+  border: 3px solid #9ca3af;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, #d1d5db 0%, #6b7280 8%, #374151 100%);
+  padding: 4px;
+  min-height: 3.25rem;
+}
+
+.broadcast-scoreboard-team {
+  @apply flex flex-1 items-center justify-between gap-2 px-3 py-2 font-bold uppercase tracking-wide text-white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+
+.broadcast-scoreboard-team-away {
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%);
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.broadcast-scoreboard-pts-away {
+  order: 1;
+  margin-right: auto;
+}
+
+.broadcast-scoreboard-name-away {
+  order: 2;
+  margin-left: auto;
+  text-align: right;
+}
+
+.broadcast-scoreboard-name {
+  @apply truncate text-xs sm:text-sm;
+}
+
+.broadcast-scoreboard-pts {
+  @apply text-xl font-black tabular-nums;
+}
+
+.broadcast-scoreboard-center {
+  @apply relative z-10 flex shrink-0 flex-col items-center justify-center px-2;
+  min-width: 5.5rem;
+}
+
+.broadcast-scoreboard-clock {
+  @apply rounded bg-black px-3 py-1 font-mono text-lg font-bold tabular-nums text-white;
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.08);
+}
+
+.broadcast-scoreboard-tab {
+  @apply mt-0.5 rounded-b px-2 py-0.5 text-[0.45rem] font-bold uppercase tracking-widest text-white/80;
+  background: linear-gradient(180deg, #6b7280, #374151);
+}
+
+.broadcast-scorers-drop {
+  @apply grid grid-cols-2 gap-2 rounded-b-md border border-t-0 border-white/15 bg-black/70 px-2 py-2;
+  margin-top: -2px;
+}
+
+.broadcast-scorers-col {
+  @apply space-y-1 border-l-2 pl-2;
+}
+
+.broadcast-scorer-row {
+  @apply flex items-center gap-1.5 text-xs text-white/90;
+}
+
+.broadcast-scorer-dot {
+  @apply h-2 w-2 shrink-0 rounded-full;
+}
+
+.broadcast-scorer-min {
+  @apply font-mono text-[0.6rem] text-white/50;
+}
+
+.broadcast-scorer-name {
+  @apply truncate font-semibold;
+}
+
+.broadcast-scorers-empty {
+  @apply text-xs text-white/30;
+}
+
+/* Goal splash — full-screen R→L sweep */
+.goal-splash {
+  @apply pointer-events-none fixed inset-0 z-[9999] overflow-hidden;
+}
+
+.goal-splash-track {
+  @apply absolute flex items-center gap-4 px-8;
+  top: 38%;
+  height: min(28vh, 11rem);
+  width: 140vw;
+  min-width: 140vw;
+  animation: goal-splash-sweep 3.2s cubic-bezier(0.22, 0.85, 0.25, 1) forwards;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  border-top: 4px solid rgba(0, 0, 0, 0.35);
+  border-bottom: 4px solid rgba(0, 0, 0, 0.35);
+}
+
+.goal-splash-left {
+  @apply relative flex shrink-0 items-center;
+  width: 10rem;
+  height: 100%;
+}
+
+.goal-splash-ball {
+  @apply relative z-10 h-16 w-16 shrink-0 sm:h-20 sm:w-20;
+  filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.35));
+}
+
+.goal-splash-lines {
+  @apply absolute left-12 top-1/2 h-12 w-28 -translate-y-1/2;
+}
+
+.goal-splash-text-wrap {
+  @apply flex min-w-0 flex-1 flex-col justify-center gap-1 pr-8;
+}
+
+.goal-splash-goal {
+  font-family: Impact, "Arial Black", Haettenschweiler, sans-serif;
+  font-size: clamp(3.5rem, 12vw, 7rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  color: white;
+  -webkit-text-stroke: 4px #000;
+  paint-order: stroke fill;
+  text-shadow:
+    4px 4px 0 #000,
+    -1px -1px 0 #000,
+    0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+.goal-splash-meta {
+  @apply truncate text-sm font-bold uppercase tracking-wide text-white sm:text-base;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.75);
+}
+
+@keyframes goal-splash-sweep {
+  0% {
+    transform: translateX(110%);
+  }
+  12% {
+    transform: translateX(8%);
+  }
+  75% {
+    transform: translateX(-15%);
+  }
+  100% {
+    transform: translateX(-115%);
+  }
+}
+
+/* Halftime splash — goal-banner style, gentler animation */
+.ht-splash {
+  @apply pointer-events-none fixed inset-0 z-[9998] overflow-hidden;
+}
+
+.ht-splash-track {
+  @apply absolute flex items-center gap-4 px-8;
+  top: 38%;
+  height: min(22vh, 9rem);
+  width: 120vw;
+  min-width: 120vw;
+  background: linear-gradient(90deg, #1a6b38 0%, #2d9e54 40%, #348f4c 100%);
+  animation: ht-splash-sweep 1.5s ease-in-out forwards;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  border-top: 4px solid rgba(0, 0, 0, 0.35);
+  border-bottom: 4px solid rgba(0, 0, 0, 0.35);
+}
+
+.ht-splash-left {
+  @apply relative flex shrink-0 items-center justify-center;
+  width: 6rem;
+  height: 100%;
+}
+
+.ht-splash-icon {
+  @apply h-14 w-14 shrink-0 sm:h-16 sm:w-16;
+  filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.35));
+}
+
+.ht-splash-text-wrap {
+  @apply flex min-w-0 flex-1 flex-col justify-center pr-8;
+}
+
+.ht-splash-title {
+  font-family: Impact, "Arial Black", Haettenschweiler, sans-serif;
+  font-size: clamp(2.75rem, 10vw, 5.5rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 0.95;
+  letter-spacing: 0.06em;
+  color: white;
+  -webkit-text-stroke: 3px #000;
+  paint-order: stroke fill;
+  text-shadow:
+    3px 3px 0 #000,
+    0 0 16px rgba(0, 0, 0, 0.35);
+}
+
+@keyframes ht-splash-sweep {
+  0% {
+    transform: translateX(105%);
+    opacity: 0.85;
+  }
+  18% {
+    transform: translateX(12%);
+    opacity: 1;
+  }
+  72% {
+    transform: translateX(4%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-108%);
+    opacity: 0.9;
+  }
+}
+
+.match-pitch-event-label {
+  @apply pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2 rounded px-3 py-1 text-center text-[0.55rem] font-bold uppercase tracking-wide text-white;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  max-width: 90%;
 }
 
 .match-viewer-body {
@@ -1193,16 +2037,18 @@ body::after {
 }
 
 .match-pitch-dot {
-  @apply absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md;
-  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  @apply absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md;
+  background: var(--kit-primary, #64748b);
+  transition: left 0.4s ease, top 0.4s ease, transform 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--kit-primary, #64748b) 55%, transparent);
 }
 
 .match-pitch-dot-home {
-  background: var(--kit-primary, #991b1b);
+  border-color: rgba(255, 255, 255, 0.95);
 }
 
 .match-pitch-dot-away {
-  background: var(--kit-primary, #e5e7eb);
+  border-color: rgba(255, 255, 255, 0.85);
 }
 
 .match-pitch-dot-active {

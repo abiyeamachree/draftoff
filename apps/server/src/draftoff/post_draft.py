@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .confederations import confederation_for_player
 from .filler_squads import ensure_league_participants
 from .formation import default_formation
 from .match_sim import simulate_match
@@ -30,10 +31,15 @@ def finalize_draft(lobby) -> None:
         squad["teamRating"] = summary["overall"]
 
     lobby.squad_summaries = summaries
+    confederations = {
+        uid: confederation_for_player(lobby.find_player(uid))
+        for uid in participant_ids
+    }
     lobby.tournament = generate_tournament(
         lobby.settings.get("tournamentType") or "round_robin",
         participant_ids,
         human_ids=human_ids,
+        confederations=confederations,
     )
     lobby.status = "SIMULATING"
 

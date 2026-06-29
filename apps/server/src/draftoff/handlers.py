@@ -441,6 +441,25 @@ async def sim_run_match(sid, data):
     return ok(result)
 
 
+@sio.on("sim:quickSync")
+async def sim_quick_sync(sid, data):
+    data = data or {}
+    lobby = store.get((data.get("code") or "").upper())
+    if not lobby:
+        return err("Lobby not found")
+    user_id = data.get("userId") or ""
+    if user_id != lobby.host_id:
+        return err("Only the host can control simulation")
+
+    action = data.get("action")
+    if action not in {"start", "stop", "pause", "match", "watch"}:
+        return err("Invalid quick sync action")
+
+    payload = {k: v for k, v in data.items() if k not in ("code", "userId")}
+    await sio.emit("sim:quickSync", payload, to=room(lobby.code), skip_sid=sid)
+    return ok(None)
+
+
 from . import draft_timer as _draft_timer_module
 
 _draft_timer_module.set_finalize_hook(_maybe_finalize_draft)

@@ -110,6 +110,7 @@ export function PickPanel({
   rerollsRemaining = 0,
   rerollsPerPick = 0,
   onPickReady,
+  embedded = false,
 }: {
   code: string;
   offer: DraftTurnOffer | null;
@@ -126,6 +127,7 @@ export function PickPanel({
   rerollsRemaining?: number;
   rerollsPerPick?: number;
   onPickReady?: () => void;
+  embedded?: boolean;
 }) {
   const { socket } = useSocket();
   const [phase, setPhase] = useState<Phase>("rolling");
@@ -302,7 +304,11 @@ export function PickPanel({
   }
 
   return (
-    <div className="panel mx-auto mt-4 max-w-2xl space-y-3">
+    <div
+      className={`panel space-y-3 ${
+        embedded ? "pick-panel-embedded" : "mx-auto mt-4 max-w-2xl"
+      }`.trim()}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="title text-[0.55rem] text-white/50">

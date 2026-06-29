@@ -20,12 +20,31 @@ export interface CommentaryLine {
 /** Pre-scripted pitch animation synced to commentary. */
 export type MatchAnimationType =
   | "kickoff"
+  | "corner"
+  | "freekick"
+  | "freekick_miss"
+  | "penalty"
+  | "penalty_miss"
+  | "transition"
+  | "near_miss"
+  | "yellow_card"
+  | "red_card"
+  | "offside_goal"
+  | "offside_var"
   | "pass"
   | "cross"
   | "shot"
   | "goal"
   | "save"
+  | "foul"
   | "celebration";
+
+export interface PitchPlayerDot {
+  team: "home" | "away";
+  x: number;
+  y: number;
+  slotIndex?: number;
+}
 
 export interface MatchAnimation {
   minute: number;
@@ -36,6 +55,10 @@ export interface MatchAnimation {
   /** Ball position on pitch (0–100). */
   ballX: number;
   ballY: number;
+  /** Optional scene layout overriding formation dots. */
+  players?: PitchPlayerDot[];
+  /** Short overlay label e.g. "Corner for Senegal". */
+  label?: string;
 }
 
 /** Result of one simulated match between two squads. */

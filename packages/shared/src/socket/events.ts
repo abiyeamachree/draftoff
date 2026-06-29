@@ -18,6 +18,7 @@ import type {
   LobbySummary,
 } from "../types/lobby.js";
 import type { MatchResult } from "../types/match.js";
+import type { QuickSimSyncPayload } from "../tournamentOrder.js";
 import type { PlayerPoolEntry } from "../types/player.js";
 import type { TournamentState } from "../types/tournament.js";
 
@@ -162,6 +163,11 @@ export interface ClientToServerEvents {
     payload: { code: string; matchId: string; userId?: string },
     ack: (res: Ack<MatchResult>) => void
   ) => void;
+  /** Relay quick-sim / match-viewer state to everyone in the room. Host only. */
+  "sim:quickSync": (
+    payload: { code: string; userId?: string } & QuickSimSyncPayload,
+    ack?: (res: Ack<null>) => void
+  ) => void;
 }
 
 /** Authoritative broadcasts the server sends to clients. */
@@ -184,6 +190,8 @@ export interface ServerToClientEvents {
     startCountdown?: number | null;
   }) => void;
   "sim:matchResult": (result: MatchResult) => void;
+  /** Quick-sim clock, pause, or full match viewer — synced from host. */
+  "sim:quickSync": (payload: QuickSimSyncPayload) => void;
   "tournament:state": (state: TournamentState) => void;
   /** A quick-chat message broadcast to everyone in the room. */
   "chat:message": (message: ChatMessage) => void;

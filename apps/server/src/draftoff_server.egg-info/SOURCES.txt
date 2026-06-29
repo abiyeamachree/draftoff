@@ -3,6 +3,7 @@ src/draftoff/__init__.py
 src/draftoff/__main__.py
 src/draftoff/app.py
 src/draftoff/catalog_routes.py
+src/draftoff/confederations.py
 src/draftoff/draft.py
 src/draftoff/draft_engine.py
 src/draftoff/draft_timer.py
@@ -10,6 +11,7 @@ src/draftoff/editions.py
 src/draftoff/fill_teams.py
 src/draftoff/filler_squads.py
 src/draftoff/formation.py
+src/draftoff/group_draw.py
 src/draftoff/handlers.py
 src/draftoff/match_sim.py
 src/draftoff/nation_match.py

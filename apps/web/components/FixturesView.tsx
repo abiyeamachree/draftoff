@@ -1,6 +1,7 @@
 "use client";
 
 import type { LobbyPlayer, Match, TournamentState } from "@draftoff/shared";
+import { displayScoreAtMinute, type LiveMatchState } from "@draftoff/shared";
 import { TeamBadge } from "@/components/TeamBadge";
 import { fixtureStripe, teamVisual } from "@/lib/teamVisual";
 
@@ -13,70 +14,74 @@ function FixtureRow({
   match,
   idx,
   players,
-  isHost,
-  simmingId,
-  onSim,
-  onWatch,
+  myUserId,
+  selectedMatchId,
+  liveSession,
+  onSelect,
 }: {
   match: Match;
   idx: number;
   players: LobbyPlayer[];
-  isHost: boolean;
-  simmingId?: string | null;
-  onSim: (match: Match) => void;
-  onWatch: (match: Match) => void;
+  myUserId: string;
+  selectedMatchId: string | null;
+  liveSession: LiveMatchState | null;
+  onSelect: (match: Match) => void;
 }) {
-  const played = match.status === "played" && match.result;
+  const isLive = liveSession?.matchId === match.matchId;
+  const serverPlayed = match.status === "played" && match.result;
   const home = match.homeUserId;
   const away = match.awayUserId;
   const homeP = playerFor(players, home);
   const awayP = playerFor(players, away);
   const homeV = teamVisual(homeP, home);
   const awayV = teamVisual(awayP, away);
-  const score = played
-    ? `${match.result!.homeScore} – ${match.result!.awayScore}`
-    : "vs";
-  const highlight = match.isHumanFixture === true;
+  const isMine = myUserId === home || myUserId === away;
+  const isSelected = match.matchId === selectedMatchId;
+
+  let score = "vs";
+  if (isLive && liveSession?.result) {
+    const s = displayScoreAtMinute(
+      liveSession.result,
+      liveSession.minute,
+      liveSession.phase
+    );
+    score = `${s.home} – ${s.away}`;
+  } else if (serverPlayed && !isLive) {
+    score = `${match.result!.homeScore} – ${match.result!.awayScore}`;
+  }
 
   return (
-    <li
-      className={`fixtures-row overflow-hidden rounded-lg border ${
-        highlight ? "border-gold/60" : "border-white/15"
-      }`}
-      style={{ background: fixtureStripe(homeV, awayV) }}
-    >
-      <div className="flex flex-wrap items-center gap-2 bg-black/30 px-3 py-2 backdrop-blur-[1px]">
-        <span className="w-8 text-xs text-white/40">#{idx + 1}</span>
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm">
-          <TeamBadge visual={homeV} />
-          <span className="truncate font-semibold drop-shadow-sm">{homeV.name}</span>
-          <span className="mx-1 font-mono text-white/80">{score}</span>
-          <span className="truncate font-semibold drop-shadow-sm">{awayV.name}</span>
-          <TeamBadge visual={awayV} />
-        </span>
-        {isHost && (
-          <div className="flex gap-2">
-            {!played ? (
-              <button
-                type="button"
-                disabled={simmingId === match.matchId}
-                className="rounded bg-emerald-700 px-3 py-1 text-xs font-bold hover:bg-emerald-600 disabled:opacity-50"
-                onClick={() => onSim(match)}
-              >
-                {simmingId === match.matchId ? "Simulating…" : "Sim"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="rounded bg-sky-700 px-3 py-1 text-xs font-bold hover:bg-sky-600"
-                onClick={() => onWatch(match)}
-              >
-                Watch
-              </button>
-            )}
+    <li>
+      <button
+        type="button"
+        className={`fixtures-row fixtures-row-btn w-full overflow-hidden rounded-lg border text-left ${
+          isMine ? "fixtures-row-mine" : "border-white/15"
+        } ${isSelected ? "fixtures-row-selected" : ""} ${isLive ? "fixtures-row-live" : ""}`}
+        style={{ background: fixtureStripe(homeV, awayV) }}
+        onClick={() => onSelect(match)}
+      >
+        <div className="relative flex flex-wrap items-center gap-2 bg-black/30 px-3 py-2 backdrop-blur-[1px]">
+          <span className="flex w-12 shrink-0 items-center gap-1 text-xs text-white/40">
+            #{idx + 1}
+            {match.group ? (
+              <span className="rounded bg-black/40 px-1 text-[0.55rem] font-bold text-gold/80">
+                {match.group}
+              </span>
+            ) : null}
+          </span>
+          <div className="fixtures-match-line min-w-0 flex-1">
+            <div className="fixtures-side fixtures-side-home">
+              <TeamBadge visual={homeV} />
+              <span className="truncate font-semibold drop-shadow-sm">{homeV.name}</span>
+            </div>
+            <span className="fixtures-vs shrink-0 font-mono text-white/80">{score}</span>
+            <div className="fixtures-side fixtures-side-away">
+              <span className="truncate font-semibold drop-shadow-sm">{awayV.name}</span>
+              <TeamBadge visual={awayV} />
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      </button>
     </li>
   );
 }
@@ -84,36 +89,31 @@ function FixtureRow({
 export function FixturesView({
   tournament,
   players,
-  isHost,
-  onSim,
-  onWatch,
-  simmingId,
+  myUserId,
+  selectedMatchId,
+  liveSession,
+  onSelectMatch,
 }: {
   tournament: TournamentState;
   players: LobbyPlayer[];
-  isHost: boolean;
-  onSim: (match: Match) => void;
-  onWatch: (match: Match) => void;
-  simmingId?: string | null;
+  myUserId: string;
+  selectedMatchId: string | null;
+  liveSession: LiveMatchState | null;
+  onSelectMatch: (match: Match) => void;
 }) {
-  const isGroups = tournament.type === "groups_knockout";
   let fixtureIdx = 0;
+  const isGroups = tournament.type === "groups_knockout";
 
   return (
-    <div className="fixtures-view space-y-4">
-      <h3 className="text-lg font-bold text-gold">Fixtures</h3>
-      {!isHost && (
-        <p className="text-sm text-white/50">Only the host can sim or watch matches.</p>
-      )}
-
-      {isGroups ? (
-        tournament.rounds.map((groupMatches, gi) => {
-          const groupLabel = groupMatches[0]?.group ?? String.fromCharCode(65 + gi);
-          return (
-            <section key={groupLabel} className="space-y-2">
-              <h4 className="title text-sm text-gold">Group {groupLabel}</h4>
+    <div className="fixtures-list-panel">
+      <h3 className="fixtures-panel-heading">Fixtures</h3>
+      <div className="fixtures-list-scroll">
+        {isGroups ? (
+          tournament.rounds.map((matchday, mdi) => (
+            <section key={`md-${mdi}`} className="fixtures-matchday">
+              <h4 className="fixtures-matchday-title">Matchday {mdi + 1}</h4>
               <ul className="fixtures-list space-y-2">
-                {groupMatches.map((match) => {
+                {matchday.map((match) => {
                   const idx = fixtureIdx++;
                   return (
                     <FixtureRow
@@ -121,83 +121,43 @@ export function FixturesView({
                       match={match}
                       idx={idx}
                       players={players}
-                      isHost={isHost}
-                      simmingId={simmingId}
-                      onSim={onSim}
-                      onWatch={onWatch}
+                      myUserId={myUserId}
+                      selectedMatchId={selectedMatchId}
+                      liveSession={liveSession}
+                      onSelect={onSelectMatch}
                     />
                   );
                 })}
               </ul>
             </section>
-          );
-        })
-      ) : (
-        <ul className="fixtures-list space-y-2">
-          {tournament.rounds.flat().map((match, idx) => (
-            <FixtureRow
-              key={match.matchId}
-              match={match}
-              idx={idx}
-              players={players}
-              isHost={isHost}
-              simmingId={simmingId}
-              onSim={onSim}
-              onWatch={onWatch}
-            />
-          ))}
-        </ul>
-      )}
-
-      {tournament.standings.length > 0 && (
-        <div className="standings-table overflow-x-auto rounded-lg bg-black/30 p-3">
-          <h4 className="mb-2 text-sm font-bold text-white/80">Standings</h4>
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="text-white/50">
-                <th className="py-1">#</th>
-                <th>Team</th>
-                <th>P</th>
-                <th>W</th>
-                <th>D</th>
-                <th>L</th>
-                <th>GD</th>
-                <th>Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tournament.standings.map((row, i) => {
-                const p = playerFor(players, row.userId);
-                const v = teamVisual(p, row.userId);
-                return (
-                  <tr key={row.userId} className="border-t border-white/10">
-                    <td className="py-1">{i + 1}</td>
-                    <td className="py-1">
-                      <span className="inline-flex items-center gap-1.5">
-                        <TeamBadge visual={v} size={14} />
-                        {v.name}
-                      </span>
-                    </td>
-                    <td>{row.played}</td>
-                    <td>{row.won}</td>
-                    <td>{row.drawn}</td>
-                    <td>{row.lost}</td>
-                    <td>
-                      {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
-                    </td>
-                    <td className="font-bold text-gold">{row.points}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+          ))
+        ) : (
+          <ul className="fixtures-list space-y-2">
+            {tournament.rounds.flat().map((match, idx) => (
+              <FixtureRow
+                key={match.matchId}
+                match={match}
+                idx={idx}
+                players={players}
+                myUserId={myUserId}
+                selectedMatchId={selectedMatchId}
+                liveSession={liveSession}
+                onSelect={onSelectMatch}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
 
       {tournament.complete && tournament.winnerUserId && (
-        <p className="flex items-center justify-center gap-2 text-center text-lg font-bold text-gold">
+        <p className="mt-3 flex items-center justify-center gap-2 text-center text-sm font-bold text-gold">
           Champion:
-          <TeamBadge visual={teamVisual(playerFor(players, tournament.winnerUserId), tournament.winnerUserId)} />
+          <TeamBadge
+            visual={teamVisual(
+              playerFor(players, tournament.winnerUserId),
+              tournament.winnerUserId
+            )}
+          />
           {teamVisual(playerFor(players, tournament.winnerUserId), tournament.winnerUserId).name}
         </p>
       )}

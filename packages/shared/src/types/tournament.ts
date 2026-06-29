@@ -43,6 +43,7 @@ export interface StandingRow {
 /**
  * Authoritative tournament state. For knockout, `rounds` is the bracket; for
  * round robin, `rounds` is the matchday schedule and `standings` is the table.
+ * For groups_knockout, each rounds entry is one matchday across all groups.
  */
 export interface TournamentState {
   type: TournamentType;

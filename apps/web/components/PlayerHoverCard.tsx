@@ -46,7 +46,6 @@ function HoverCardBody({ player }: { player: HoverPlayer }) {
         <StatBar
           value={player.overall}
           size="sm"
-          label="OVR"
           showRecall
           className="player-hover-ovr"
         />

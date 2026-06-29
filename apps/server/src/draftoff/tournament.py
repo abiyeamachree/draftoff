@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import random
 import uuid
+
+from .group_draw import draw_groups
 
 
 def _match_id() -> str:
@@ -43,7 +46,7 @@ def generate_round_robin(
                     "awayUserId": away,
                     "status": "pending",
                     "result": None,
-                    "isHumanFixture": home in humans and away in humans,
+                    "isHumanFixture": home in humans or away in humans,
                 }
             )
         if round_matches:
@@ -57,22 +60,51 @@ def generate_groups_knockout(
     user_ids: list[str],
     human_ids: set[str] | None = None,
     group_size: int = 4,
+    confederations: dict[str, str | None] | None = None,
 ) -> list[list[dict]]:
-    """One rounds entry per group — each contains that group's full round robin."""
+    """Interleaved group stage: each rounds entry is one matchday across all groups."""
     humans = human_ids if human_ids is not None else set(user_ids)
     teams = list(user_ids)
-    rounds: list[list[dict]] = []
 
-    for gi in range(0, len(teams), group_size):
-        chunk = teams[gi : gi + group_size]
+    chunks: list[list[str]]
+    if confederations:
+        drawn = draw_groups(teams, confederations, group_size=group_size)
+        if drawn:
+            chunks = drawn
+        else:
+            shuffled = list(teams)
+            random.shuffle(shuffled)
+            chunks = [
+                shuffled[i : i + group_size] for i in range(0, len(shuffled), group_size)
+            ]
+    else:
+        shuffled = list(teams)
+        random.shuffle(shuffled)
+        chunks = [shuffled[i : i + group_size] for i in range(0, len(shuffled), group_size)]
+
+    group_schedules: list[list[list[dict]]] = []
+    for chunk in chunks:
         if len(chunk) < 2:
             continue
-        group_name = chr(ord("A") + len(rounds)) if len(rounds) < 26 else f"G{len(rounds)}"
-        group_matches: list[dict] = []
-        for rnd in generate_round_robin(chunk, humans):
-            for m in rnd:
-                group_matches.append({**m, "group": group_name})
-        rounds.append(group_matches)
+        group_name = chr(ord("A") + len(group_schedules)) if len(group_schedules) < 26 else f"G{len(group_schedules)}"
+        schedule = [
+            [{**m, "group": group_name} for m in rnd]
+            for rnd in generate_round_robin(chunk, humans)
+        ]
+        group_schedules.append(schedule)
+
+    if not group_schedules:
+        return []
+
+    num_matchdays = max(len(schedule) for schedule in group_schedules)
+    rounds: list[list[dict]] = []
+    for md in range(num_matchdays):
+        matchday: list[dict] = []
+        for schedule in group_schedules:
+            if md < len(schedule):
+                matchday.extend(schedule[md])
+        if matchday:
+            rounds.append(matchday)
 
     return rounds
 
@@ -82,6 +114,7 @@ def generate_tournament(
     user_ids: list[str],
     *,
     human_ids: set[str] | None = None,
+    confederations: dict[str, str | None] | None = None,
 ) -> dict:
     humans = human_ids if human_ids is not None else set(user_ids)
     if tournament_type == "double_round_robin":
@@ -104,7 +137,9 @@ def generate_tournament(
             second.append(flipped)
         rounds = first + second
     elif tournament_type == "groups_knockout":
-        rounds = generate_groups_knockout(user_ids, humans)
+        rounds = generate_groups_knockout(
+            user_ids, humans, confederations=confederations
+        )
     else:
         rounds = generate_round_robin(user_ids, humans)
 
